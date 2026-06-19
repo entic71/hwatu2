@@ -9,86 +9,45 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <style>
-body {
-  margin:0;
-  font-family:sans-serif;
-  background:#111;
-  color:white;
-  text-align:center;
-}
-
-.top {
-  padding:10px;
-  background:#222;
-}
-
-.cards {
-  display:flex;
-  justify-content:center;
-  margin:10px;
-}
-
-.card {
-  width:80px;
-  height:120px;
-  margin:5px;
-  border-radius:10px;
-  background:white;
-  color:black;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  font-size:18px;
-}
-
-.hidden {
-  background:#333;
-  color:#333;
-}
-
-button {
-  width:80%;
-  padding:15px;
-  margin:5px;
-  font-size:16px;
-  border:none;
-  border-radius:10px;
-}
-
-.action { background:#4CAF50; color:white; }
-.die { background:#f44336; color:white; }
+body { background:#111; color:white; text-align:center; font-family:sans-serif; }
+.card { width:70px;height:100px;background:white;color:black;margin:5px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px; }
+.hidden { background:#333;color:#333; }
+button { padding:10px;margin:5px; }
 </style>
 </head>
 
 <body>
 
-<div class="top">
-  <input id="name" placeholder="닉네임">
-  <button onclick="join()">입장</button>
-</div>
+<h2>🃏 섰다</h2>
+
+<input id="name" placeholder="닉네임"><br><br>
+
+<button onclick="createRoom()">방 만들기</button>
+<br><br>
+<input id="roomInput" placeholder="방 코드 입력">
+<button onclick="joinRoom()">방 입장</button>
+
+<h3 id="roomCode"></h3>
 
 <div id="game" style="display:none;">
 
-<h3 id="turnText"></h3>
+<hr>
 
-<div>
 판돈 <input id="bet" type="number">
 <button onclick="setBet()">설정</button>
-</div>
 
 <h3 id="betView"></h3>
 
-<button class="action" onclick="draw()">카드 받기</button>
+<button onclick="draw()">카드 받기</button>
 
 <h3>내 카드</h3>
-<div id="myCards" class="cards"></div>
+<div id="myCards"></div>
 
 <h3>상대 카드</h3>
-<div id="enemyCards" class="cards"></div>
+<div id="enemyCards"></div>
 
-<button class="action" onclick="call()">콜</button>
-<button class="die" onclick="die()">다이</button>
+<button onclick="call()">콜</button>
+<button onclick="die()">다이</button>
 
 <button onclick="endGame()">게임 종료</button>
 
@@ -111,56 +70,72 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let player = "";
-let room = "room1";
+let room = "";
 
 const cards = [
   "1","2","3","4","5","6","7","8","9","10",
   "1광","3광","8광",
-  "암행어사(4,7)",
-  "땡잡이(1,3)",
-  "구사",
-  "멍텅구리"
+  "암행어사(4,7)","땡잡이(1,3)","구사","멍텅구리"
 ];
 
-function join(){
+function makeCode(){
+  return Math.random().toString(36).substring(2,6).toUpperCase();
+}
+
+function createRoom(){
   player = document.getElementById("name").value;
-  if(!player) return;
+  if(!player) return alert("닉네임");
 
-  document.getElementById("game").style.display="block";
+  room = makeCode();
 
-  db.ref(room+"/players/"+player).set({
-    money:0,
-    cards:[],
-    called:false,
-    died:false
+  document.getElementById("roomCode").innerText = "방 코드: "+room;
+
+  db.ref("rooms/"+room).set({
+    players:{},
+    bet:0
   });
 
-  // 첫 입장자 턴
-  db.ref(room+"/turn").once("value").then(s=>{
-    if(!s.exists()){
-      db.ref(room+"/turn").set(player);
-    }
-  });
+  joinToRoom();
+}
 
-  listen();
+function joinRoom(){
+  player = document.getElementById("name").value;
+  room = document.getElementById("roomInput").value.toUpperCase();
+
+  if(!player || !room) return;
+
+  joinToRoom();
+}
+
+function joinToRoom(){
+  db.ref("rooms/"+room+"/players").once("value").then(s=>{
+    const count = s.numChildren();
+    if(count >= 2) return alert("방 꽉참");
+
+    db.ref("rooms/"+room+"/players/"+player).set({
+      money:0,
+      cards:[]
+    });
+
+    document.getElementById("game").style.display="block";
+    listen();
+  });
 }
 
 function setBet(){
-  const bet = Number(document.getElementById("bet").value);
-  db.ref(room+"/bet").set(bet);
+  db.ref("rooms/"+room+"/bet").set(Number(document.getElementById("bet").value));
 }
 
 function draw(){
-  let my = [];
+  let my=[];
   for(let i=0;i<3;i++){
     my.push(cards[Math.floor(Math.random()*cards.length)]);
   }
-
-  db.ref(room+"/players/"+player+"/cards").set(my);
+  db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
 }
 
 function render(list, target, hide){
-  const el = document.getElementById(target);
+  const el=document.getElementById(target);
   el.innerHTML="";
   list.forEach(c=>{
     const d=document.createElement("div");
@@ -170,61 +145,39 @@ function render(list, target, hide){
   });
 }
 
-function call(){
-  db.ref(room+"/players/"+player+"/called").set(true);
-  nextTurn();
-}
+function call(){}
 
 function die(){
-  db.ref(room+"/players/"+player+"/died").set(true);
-
-  db.ref(room+"/bet").once("value").then(s=>{
+  db.ref("rooms/"+room+"/bet").once("value").then(s=>{
     const bet=s.val();
-
-    db.ref(room+"/players/"+player+"/money").once("value").then(m=>{
-      db.ref(room+"/players/"+player).update({
+    db.ref("rooms/"+room+"/players/"+player+"/money").once("value").then(m=>{
+      db.ref("rooms/"+room+"/players/"+player).update({
         money:(m.val()||0)-bet
       });
     });
   });
-
-  nextTurn();
-}
-
-function nextTurn(){
-  db.ref(room+"/players").once("value").then(snap=>{
-    const players = Object.keys(snap.val());
-    const next = players.find(p=>p!==player);
-    db.ref(room+"/turn").set(next);
-  });
 }
 
 function endGame(){
-  db.ref(room+"/players").once("value").then(snap=>{
+  db.ref("rooms/"+room+"/players").once("value").then(s=>{
     let txt="";
-    snap.forEach(p=>{
+    s.forEach(p=>{
       txt+=p.key+" : "+p.val().money+"<br>";
     });
     document.getElementById("result").innerHTML=txt;
   });
+
+  // 🔥 방 삭제
+  db.ref("rooms/"+room).remove();
 }
 
 function listen(){
-
-  db.ref(room+"/bet").on("value",s=>{
+  db.ref("rooms/"+room+"/bet").on("value",s=>{
     document.getElementById("betView").innerText="판돈: "+s.val();
   });
 
-  db.ref(room+"/turn").on("value",s=>{
-    const t=s.val();
-    document.getElementById("turnText").innerText =
-      (t===player ? "👉 내 턴" : "⏳ 상대 턴");
-  });
-
-  db.ref(room+"/players").on("value",snap=>{
-    const players = snap.val();
-    if(!players) return;
-
+  db.ref("rooms/"+room+"/players").on("value",snap=>{
+    const players=snap.val();
     for(let p in players){
       if(p===player){
         render(players[p].cards||[], "myCards", false);
