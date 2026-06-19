@@ -10,7 +10,6 @@
 
 <style>
 body { margin:0; background:#0b0f1a; color:white; font-family:sans-serif; text-align:center; }
-
 .container { padding:15px; }
 
 .card {
@@ -25,9 +24,7 @@ body { margin:0; background:#0b0f1a; color:white; font-family:sans-serif; text-a
   font-weight:bold;
   animation:pop 0.3s ease;
 }
-
 .hidden { background:#333; color:#333; }
-
 .cards { display:flex; justify-content:center; }
 
 @keyframes pop {
@@ -43,7 +40,6 @@ button {
   border-radius:10px;
   font-size:16px;
 }
-
 .primary { background:#4CAF50; color:white; }
 .danger { background:#e53935; color:white; }
 
@@ -72,8 +68,7 @@ button {
 </div>
 
 <div id="game" style="display:none;">
-
-<h3 id="status">카드 뽑기</h3>
+<h3 id="turnText"></h3>
 
 <button class="primary" onclick="draw()">카드 뽑기</button>
 
@@ -110,34 +105,36 @@ const deckBase = [
   "암행어사(4,7)","땡잡이(1,3)","구사","멍텅구리"
 ];
 
-// 🔥 방 생성
+// 방 생성
 function createRoom(){
-  player = name.value;
-  if(!player) return alert("닉네임");
+  player = document.getElementById("name").value.trim();
+  if(!player) return alert("닉네임 입력");
 
   room = Math.random().toString(36).substr(2,4).toUpperCase();
-  roomCode.innerText = "방 코드: "+room;
+  document.getElementById("roomCode").innerText = "방 코드: "+room;
 
   db.ref("rooms/"+room).set({
     players:{},
     deck: shuffle([...deckBase]),
-    started:false
+    started:false,
+    turn:null
   });
 
   joinCore();
 }
 
-// 🔥 방 입장
+// 방 입장
 function joinRoom(){
-  player = name.value;
-  room = roomInput.value.toUpperCase();
-  if(!player || !room) return;
+  player = document.getElementById("name").value.trim();
+  room = document.getElementById("roomInput").value.toUpperCase();
+
+  if(!player) return alert("닉네임 입력");
+  if(!room) return alert("방 코드 입력");
 
   joinCore();
 }
 
 function joinCore(){
-
   const playerRef = db.ref("rooms/"+room+"/players/"+player);
 
   playerRef.set({
@@ -145,72 +142,108 @@ function joinCore(){
     money:0
   });
 
-  // 🔥 연결 끊기면 자동 제거
   playerRef.onDisconnect().remove();
 
   listen();
 }
 
-// 🔥 시작
+// 시작
 function startGame(){
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     if(s.numChildren() < 2){
       alert("2명 필요");
       return;
     }
-    db.ref("rooms/"+room+"/started").set(true);
+
+    const first = Object.keys(s.val())[0];
+
+    db.ref("rooms/"+room).update({
+      started:true,
+      turn:first
+    });
   });
 }
 
-// 🔥 카드 뽑기 (공유 덱)
+// 카드 뽑기 (내 턴만)
 function draw(){
-  const deckRef = db.ref("rooms/"+room+"/deck");
+  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
+    if(s.val() !== player){
+      alert("니 턴 아님");
+      return;
+    }
 
-  deckRef.transaction(deck=>{
-    if(!deck || deck.length < 3) return deck;
+    const deckRef = db.ref("rooms/"+room+"/deck");
 
-    const my = deck.splice(0,3);
+    deckRef.transaction(deck=>{
+      if(!deck || deck.length < 3) return deck;
 
-    db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
+      const my = deck.splice(0,3);
 
-    return deck;
+      db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
+
+      return deck;
+    });
+
+    nextTurn();
   });
 }
 
-// 🔥 렌더
+// 턴 넘기기
+function nextTurn(){
+  db.ref("rooms/"+room+"/players").once("value").then(s=>{
+    const players = Object.keys(s.val());
+    const next = players.find(p=>p!==player);
+
+    db.ref("rooms/"+room+"/turn").set(next);
+  });
+}
+
+// 콜
+function call(){
+  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
+    if(s.val() !== player){
+      alert("니 턴 아님");
+      return;
+    }
+    nextTurn();
+  });
+}
+
+// 다이
+function die(){
+  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
+    if(s.val() !== player){
+      alert("니 턴 아님");
+      return;
+    }
+    alert(player+" 다이");
+    nextTurn();
+  });
+}
+
+// 카드 렌더
 function render(list, target, hide){
   const el = document.getElementById(target);
   el.innerHTML = "";
 
   list.forEach(c=>{
     const d = document.createElement("div");
-    d.className = "card " + (hide?"hidden":"");
-    d.innerText = hide ? "?" : c;
+    d.className = "card "+(hide?"hidden":"");
+    d.innerText = hide?"?":c;
     el.appendChild(d);
   });
 }
 
-// 🔥 콜
-function call(){
-  status.innerText = "콜";
-}
-
-// 🔥 다이
-function die(){
-  status.innerText = "다이";
-}
-
-// 🔥 셔플
+// 셔플
 function shuffle(a){
   return a.sort(()=>Math.random()-0.5);
 }
 
-// 🔥 리스너 (핵심)
+// 리스너
 function listen(){
 
   const roomRef = db.ref("rooms/"+room);
 
-  // 플레이어 표시 + 카드
   roomRef.child("players").on("value", snap=>{
     const players = snap.val();
     if(!players) return;
@@ -224,8 +257,7 @@ function listen(){
       html += `<div class="box">상대 대기중...</div>`;
     }
 
-    playersDiv = document.getElementById("players");
-    playersDiv.innerHTML = html;
+    document.getElementById("players").innerHTML = html;
 
     for(let p in players){
       if(p === player){
@@ -236,12 +268,17 @@ function listen(){
     }
   });
 
-  // 게임 시작
   roomRef.child("started").on("value", snap=>{
     if(snap.val() === true){
       document.getElementById("lobby").style.display = "none";
       document.getElementById("game").style.display = "block";
     }
+  });
+
+  roomRef.child("turn").on("value", snap=>{
+    const t = snap.val();
+    document.getElementById("turnText").innerText =
+      (t === player) ? "👉 내 턴" : "⏳ 상대 턴";
   });
 }
 </script>
