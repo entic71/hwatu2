@@ -433,6 +433,9 @@ function awardPot(winner, pot){
     const players = s.val();
     const loser = Object.keys(players).find(p=>p!==winner);
 
+    // 현재 패를 덱에 되돌리기
+    const currentCards = [...(players[winner].cards||[]), ...(players[loser].cards||[])];
+
     const updates = {};
     updates["players/"+winner+"/score"] = (players[winner].score||0) + pot;
     updates["players/"+loser+"/score"] = (players[loser].score||0) - pot;
@@ -445,7 +448,13 @@ function awardPot(winner, pot){
     updates["revealed"] = false;
     updates["turn"] = winner; // 다음 라운드는 승자부터
 
-    db.ref("rooms/"+room).update(updates);
+    // 덱에 현재 카드를 추가하고 섞기
+    db.ref("rooms/"+room+"/deck").once("value").then(deckSnap=>{
+      const currentDeck = deckSnap.val() || [];
+      const newDeck = shuffle([...currentDeck, ...currentCards]);
+      updates["deck"] = newDeck;
+      db.ref("rooms/"+room).update(updates);
+    });
   });
 }
 
