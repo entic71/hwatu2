@@ -29,9 +29,10 @@
     background:white;
     color:black;
     font-weight:bold;
-    font-size:14px;
+    font-size:20px;
     animation:pop 0.3s ease;
   }
+  .card.special { border:3px solid #caa24a; }
   .hidden { background:#333; color:#333; }
   .cards { display:flex; justify-content:center; min-height:100px; flex-wrap:wrap; }
 
@@ -107,6 +108,12 @@
     color:#888;
     margin:15px 0 5px;
   }
+
+  .reveal-label {
+    font-size:13px;
+    color:#caa24a;
+    margin-top:4px;
+  }
 </style>
 </head>
 
@@ -148,24 +155,26 @@
 
   <h3>내 카드</h3>
   <div id="myCards" class="cards"></div>
+  <div id="myRevealLabel" class="reveal-label" style="display:none;"></div>
 
   <h3>상대 카드</h3>
   <div id="enemyCards" class="cards"></div>
+  <div id="enemyRevealLabel" class="reveal-label" style="display:none;"></div>
 
   <div class="section-title">베팅</div>
   <div id="betArea">
     <input id="betInput" type="number" placeholder="베팅 금액 (예: 1000)" min="1" step="100">
     <br>
-    <button class="gold" onclick="placeBet()">베팅하기</button>
+    <button class="gold" onclick="placeBet()">베팅하기 / 더 올리기</button>
   </div>
 
   <div id="actionArea" style="display:none;">
-    <button class="primary half" onclick="call()">콜</button>
+    <button class="primary half" onclick="call()">콜 (카드 공개)</button>
     <button class="danger half" onclick="die()">다이</button>
   </div>
 
   <div id="resultArea" style="display:none;">
-    <p style="color:#f0d080;">콜! 통화로 승자를 정하고 선택해주세요</p>
+    <p style="color:#f0d080;">카드가 공개됐어요. 승자를 선택해주세요</p>
     <button class="primary" onclick="finishRound(true)">내가 이겼다</button>
     <button class="secondary" onclick="finishRound(false)">상대가 이겼다</button>
   </div>
@@ -191,11 +200,16 @@ const db = firebase.database();
 let player = "";
 let room = "";
 
-const deckBase = [
-  "1","2","3","4","5","6","7","8","9","10",
-  "1광","3광","8광",
-  "광땡","장땡","구사","멍텅구리"
-];
+// 섰다 덱: 1~10 각 2장 = 총 20장.
+// 같은 숫자 카드 중 하나는 특수패(보통 "광") 취급 -> 숫자 뒤에 "." 표시
+function buildDeck(){
+  const deck = [];
+  for(let n = 1; n <= 10; n++){
+    deck.push(String(n));       // 일반패
+    deck.push(String(n) + ".");  // 특수패(광 등)
+  }
+  return deck;
+}
 
 // ---------- 방 생성 / 입장 ----------
 
@@ -207,13 +221,14 @@ function createRoom(){
 
   db.ref("rooms/"+room).set({
     players:{},
-    deck: shuffle([...deckBase]),
+    deck: shuffle(buildDeck()),
     started:false,
     turn:null,
     pot:0,
     currentBet:0,
     bettor:null,
-    phase:"idle" // idle -> betting -> waiting_action -> waiting_result
+    revealed:false,
+    phase:"idle" // idle -> betting -> waiting_result
   }).then(() => {
     joinCore();
   });
@@ -269,12 +284,18 @@ function startGame(){
       phase:"idle",
       pot:0,
       currentBet:0,
-      bettor:null
+      bettor:null,
+      revealed:false,
+      deck: shuffle(buildDeck())
     });
   });
 }
 
 // ---------- 카드 뽑기 ----------
+// transaction 콜백은 충돌 시 여러 번 재실행될 수 있으므로,
+// 콜백 안에서는 deck 배열 계산만 하고 실제 카드 지급(다른 경로 쓰기)은
+// transaction이 완전히 끝난 뒤 onComplete에서 단 한 번만 수행한다.
+// (예전 버전은 콜백 안에서 직접 set()을 호출해서 덱이 꼬이는 버그가 있었음)
 
 function draw(){
   db.ref("rooms/"+room+"/turn").once("value").then(s=>{
@@ -284,15 +305,29 @@ function draw(){
     }
 
     const deckRef = db.ref("rooms/"+room+"/deck");
+    let drawnCards = null;
 
-    deckRef.transaction(deck=>{
-      if(!deck || deck.length < 2) return deck;
-      const my = deck.splice(0,2);
-      db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
-      return deck;
-    });
-
-    nextTurn();
+    deckRef.transaction(
+      deck=>{
+        if(!deck || deck.length < 2) return deck;
+        const copy = deck.slice();
+        drawnCards = copy.splice(0,2);
+        return copy;
+      },
+      (error, committed) => {
+        if(error){
+          console.error("카드 뽑기 트랜잭션 실패:", error);
+          return;
+        }
+        if(!committed || !drawnCards){
+          alert("덱에 카드가 부족합니다.");
+          return;
+        }
+        // 트랜잭션이 확정된 후 단 한 번만 카드 지급
+        db.ref("rooms/"+room+"/players/"+player+"/cards").set(drawnCards);
+        nextTurn();
+      }
+    );
   });
 }
 
@@ -305,7 +340,8 @@ function nextTurn(){
 }
 
 // ---------- 베팅 흐름 ----------
-// phase: idle(베팅 전) -> betting(누군가 베팅함, 상대 턴) -> waiting_result(콜 눌러서 승자 선택 대기)
+// phase: idle(베팅 전) -> betting(누군가 베팅함, 상대 반응 대기) -> waiting_result(콜 눌러서 카드 공개 + 승자 선택 대기)
+// 판돈은 횟수/금액 제한 없이 계속 올릴 수 있음(레이즈 무제한)
 
 function placeBet(){
   const amount = parseInt(document.getElementById("betInput").value, 10);
@@ -327,8 +363,8 @@ function placeBet(){
         bettor: player,
         phase: "betting"
       });
-    } else if(data.phase === "betting" && data.bettor !== player){
-      // 추가 베팅(레이즈): 새 베팅액만큼 pot에 더함
+    } else if(data.phase === "betting"){
+      // 누구든 추가로 베팅금을 더 올릴 수 있음 (무제한 레이즈)
       roomRef.update({
         pot: data.pot + amount,
         currentBet: amount,
@@ -354,10 +390,11 @@ function call(){
       alert("자신의 베팅에는 콜할 수 없습니다.");
       return;
     }
-    // 콜한 사람도 같은 금액을 추가로 pot에 넣음
+    // 콜한 사람도 같은 금액을 추가로 pot에 넣고, 양쪽 카드를 공개
     db.ref("rooms/"+room).update({
       pot: data.pot + data.currentBet,
-      phase: "waiting_result"
+      phase: "waiting_result",
+      revealed: true
     });
   });
 }
@@ -377,23 +414,21 @@ function die(){
     const winner = data.bettor; // 베팅한 사람이 가져감
     const pot = data.pot;
 
-    awardPot(winner, pot, "다이");
+    awardPot(winner, pot);
   });
 }
 
 function finishRound(iWon){
-  const winner = iWon ? player : null;
-
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     const players = Object.keys(s.val());
     const actualWinner = iWon ? player : players.find(p=>p!==player);
     db.ref("rooms/"+room+"/pot").once("value").then(potSnap=>{
-      awardPot(actualWinner, potSnap.val(), "콜");
+      awardPot(actualWinner, potSnap.val());
     });
   });
 }
 
-function awardPot(winner, pot, reason){
+function awardPot(winner, pot){
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     const players = s.val();
     const loser = Object.keys(players).find(p=>p!==winner);
@@ -407,13 +442,10 @@ function awardPot(winner, pot, reason){
     updates["currentBet"] = 0;
     updates["bettor"] = null;
     updates["phase"] = "idle";
+    updates["revealed"] = false;
     updates["turn"] = winner; // 다음 라운드는 승자부터
 
-    db.ref("rooms/"+room).update(updates).then(()=>{
-      if(reason === "다이"){
-        // 다이 누른 사람 본인 화면에서만 알림 (양쪽 다 누를 수 있는 함수가 아니므로 그냥 본인이 호출)
-      }
-    });
+    db.ref("rooms/"+room).update(updates);
   });
 }
 
@@ -425,8 +457,9 @@ function render(list, target, hide){
 
   list.forEach(c=>{
     const d = document.createElement("div");
-    d.className = "card "+(hide?"hidden":"");
-    d.innerText = hide?"?":c;
+    const isSpecial = String(c).endsWith(".");
+    d.className = "card " + (hide ? "hidden" : (isSpecial ? "special" : ""));
+    d.innerText = hide ? "?" : c;
     el.appendChild(d);
   });
 }
@@ -475,13 +508,25 @@ function listen(){
     }
     document.getElementById("players").innerHTML = html;
 
-    for(let p in players){
-      if(p === player){
-        render(players[p].cards||[], "myCards", false);
-      } else {
-        render(players[p].cards||[], "enemyCards", true);
+    // 카드 공개 여부(revealed)에 따라 상대 카드도 보일지 결정
+    roomRef.child("revealed").once("value").then(revSnap=>{
+      const revealed = revSnap.val() === true;
+
+      for(let p in players){
+        if(p === player){
+          render(players[p].cards||[], "myCards", false);
+        } else {
+          render(players[p].cards||[], "enemyCards", !revealed);
+        }
       }
-    }
+
+      document.getElementById("myRevealLabel").style.display = revealed ? "block" : "none";
+      document.getElementById("enemyRevealLabel").style.display = revealed ? "block" : "none";
+      if(revealed){
+        document.getElementById("myRevealLabel").innerText = "공개됨";
+        document.getElementById("enemyRevealLabel").innerText = "공개됨";
+      }
+    });
 
     renderScores(players);
   });
@@ -511,12 +556,35 @@ function listen(){
     }
   });
 
+  roomRef.child("revealed").on("value", ()=>{
+    // 공개 여부가 바뀌면 카드도 다시 그려야 하므로 players를 다시 조회해서 갱신
+    roomRef.child("players").once("value").then(snap=>{
+      const players = snap.val();
+      if(!players) return;
+      roomRef.child("revealed").once("value").then(revSnap=>{
+        const revealed = revSnap.val() === true;
+        for(let p in players){
+          if(p === player){
+            render(players[p].cards||[], "myCards", false);
+          } else {
+            render(players[p].cards||[], "enemyCards", !revealed);
+          }
+        }
+        document.getElementById("myRevealLabel").style.display = revealed ? "block" : "none";
+        document.getElementById("enemyRevealLabel").style.display = revealed ? "block" : "none";
+        if(revealed){
+          document.getElementById("myRevealLabel").innerText = "공개됨";
+          document.getElementById("enemyRevealLabel").innerText = "공개됨";
+        }
+      });
+    });
+  });
+
   roomRef.child("phase").on("value", snap=>{
     updatePhaseUI(snap.val());
   });
 
   roomRef.child("bettor").on("value", ()=>{
-    // bettor가 바뀌면 phase UI도 다시 그려야 하므로 phase 다시 조회
     roomRef.child("phase").once("value").then(s=>updatePhaseUI(s.val()));
   });
 }
@@ -525,7 +593,6 @@ function updatePhaseUI(phase){
   const betArea = document.getElementById("betArea");
   const actionArea = document.getElementById("actionArea");
   const resultArea = document.getElementById("resultArea");
-  const drawArea = document.getElementById("drawArea");
 
   if(!phase) phase = "idle";
 
@@ -537,12 +604,12 @@ function updatePhaseUI(phase){
     db.ref("rooms/"+room+"/bettor").once("value").then(s=>{
       const bettor = s.val();
       if(bettor === player){
-        // 내가 베팅한 사람 -> 상대 반응 대기
+        // 내가 마지막으로 베팅(레이즈)한 사람 -> 상대 반응 대기
         betArea.style.display = "none";
         actionArea.style.display = "none";
         resultArea.style.display = "none";
       } else {
-        // 상대가 베팅함 -> 콜/다이/추가베팅 가능
+        // 상대가 베팅(레이즈)함 -> 콜/다이/추가 레이즈 가능
         betArea.style.display = "block";
         actionArea.style.display = "block";
         resultArea.style.display = "none";
