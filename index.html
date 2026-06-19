@@ -9,49 +9,101 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <style>
-body { background:#111; color:white; text-align:center; font-family:sans-serif; }
-.card { width:70px;height:100px;background:white;color:black;margin:5px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px; }
-.hidden { background:#333;color:#333; }
-button { padding:10px;margin:5px; }
+body { margin:0; font-family:sans-serif; background:#0e0e0e; color:white; }
+
+.container { padding:15px; text-align:center; }
+
+.box {
+  background:#1e1e1e;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
+}
+
+.player {
+  padding:10px;
+  margin:5px;
+  border-radius:8px;
+  background:#333;
+}
+
+.ready { background:#2e7d32; }
+
+.cards { display:flex; justify-content:center; }
+
+.card {
+  width:70px; height:100px;
+  margin:5px;
+  border-radius:10px;
+  background:white;
+  color:black;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.hidden { background:#444; color:#444; }
+
+button {
+  width:100%;
+  padding:12px;
+  margin:5px 0;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+}
+
+.start { background:#2196F3; color:white; }
+.action { background:#4CAF50; color:white; }
+.die { background:#f44336; color:white; }
+
 </style>
 </head>
 
 <body>
 
+<div class="container">
+
 <h2>🃏 섰다</h2>
 
+<div class="box">
 <input id="name" placeholder="닉네임"><br><br>
-
 <button onclick="createRoom()">방 만들기</button>
 <br><br>
-<input id="roomInput" placeholder="방 코드 입력">
-<button onclick="joinRoom()">방 입장</button>
+<input id="roomInput" placeholder="방 코드">
+<button onclick="joinRoom()">입장</button>
 
 <h3 id="roomCode"></h3>
+</div>
 
-<div id="game" style="display:none;">
+<div id="lobby" class="box" style="display:none;">
+<h3>🎮 게임방</h3>
 
-<hr>
+<div id="playerList"></div>
 
-판돈 <input id="bet" type="number">
-<button onclick="setBet()">설정</button>
+<button class="start" onclick="startGame()">게임 시작</button>
+</div>
+
+<div id="game" class="box" style="display:none;">
 
 <h3 id="betView"></h3>
 
-<button onclick="draw()">카드 받기</button>
+<button class="action" onclick="draw()">카드 받기</button>
 
 <h3>내 카드</h3>
-<div id="myCards"></div>
+<div id="myCards" class="cards"></div>
 
 <h3>상대 카드</h3>
-<div id="enemyCards"></div>
+<div id="enemyCards" class="cards"></div>
 
-<button onclick="call()">콜</button>
-<button onclick="die()">다이</button>
+<button class="action" onclick="call()">콜</button>
+<button class="die" onclick="die()">다이</button>
 
 <button onclick="endGame()">게임 종료</button>
 
 <h3 id="result"></h3>
+
+</div>
 
 </div>
 
@@ -84,14 +136,13 @@ function makeCode(){
 
 function createRoom(){
   player = document.getElementById("name").value;
-  if(!player) return alert("닉네임");
-
   room = makeCode();
 
-  document.getElementById("roomCode").innerText = "방 코드: "+room;
+  document.getElementById("roomCode").innerText="방 코드: "+room;
 
   db.ref("rooms/"+room).set({
     players:{},
+    started:false,
     bet:0
   });
 
@@ -101,29 +152,21 @@ function createRoom(){
 function joinRoom(){
   player = document.getElementById("name").value;
   room = document.getElementById("roomInput").value.toUpperCase();
-
-  if(!player || !room) return;
-
   joinToRoom();
 }
 
 function joinToRoom(){
-  db.ref("rooms/"+room+"/players").once("value").then(s=>{
-    const count = s.numChildren();
-    if(count >= 2) return alert("방 꽉참");
-
-    db.ref("rooms/"+room+"/players/"+player).set({
-      money:0,
-      cards:[]
-    });
-
-    document.getElementById("game").style.display="block";
-    listen();
+  db.ref("rooms/"+room+"/players/"+player).set({
+    money:0,
+    cards:[]
   });
+
+  document.getElementById("lobby").style.display="block";
+  listen();
 }
 
-function setBet(){
-  db.ref("rooms/"+room+"/bet").set(Number(document.getElementById("bet").value));
+function startGame(){
+  db.ref("rooms/"+room+"/started").set(true);
 }
 
 function draw(){
@@ -134,7 +177,7 @@ function draw(){
   db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
 }
 
-function render(list, target, hide){
+function render(list,target,hide){
   const el=document.getElementById(target);
   el.innerHTML="";
   list.forEach(c=>{
@@ -167,22 +210,49 @@ function endGame(){
     document.getElementById("result").innerHTML=txt;
   });
 
-  // 🔥 방 삭제
   db.ref("rooms/"+room).remove();
 }
 
 function listen(){
+
+  db.ref("rooms/"+room+"/players").on("value",snap=>{
+    const players=snap.val();
+    if(!players) return;
+
+    let html="";
+    let count=0;
+
+    for(let p in players){
+      count++;
+      html += `<div class="player">${p} ✔ 접속</div>`;
+    }
+
+    if(count < 2){
+      html += `<div class="player">상대 기다리는 중...</div>`;
+    }
+
+    document.getElementById("playerList").innerHTML=html;
+  });
+
+  db.ref("rooms/"+room+"/started").on("value",s=>{
+    if(s.val()){
+      document.getElementById("lobby").style.display="none";
+      document.getElementById("game").style.display="block";
+    }
+  });
+
   db.ref("rooms/"+room+"/bet").on("value",s=>{
     document.getElementById("betView").innerText="판돈: "+s.val();
   });
 
   db.ref("rooms/"+room+"/players").on("value",snap=>{
     const players=snap.val();
+
     for(let p in players){
       if(p===player){
-        render(players[p].cards||[], "myCards", false);
+        render(players[p].cards||[],"myCards",false);
       }else{
-        render(players[p].cards||[], "enemyCards", true);
+        render(players[p].cards||[],"enemyCards",true);
       }
     }
   });
