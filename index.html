@@ -169,21 +169,17 @@ function startGame(){
 }
 
 function draw(){
-  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
-    if(s.val()!==player) return alert("니 턴 아님");
+  db.ref("rooms/"+room+"/deck").transaction(deck=>{
+    if(!deck || deck.length < 2) return deck;
 
-    db.ref("rooms/"+room+"/deck").transaction(deck=>{
-      if(!deck||deck.length<2) return deck;
+    const my = deck.splice(0,2);
+    db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
 
-      const my = deck.splice(0,2);
-      db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
-      return deck;
-    });
-
-    nextTurn();
+    return deck;
   });
 }
 
+// 🔥 턴은 배팅에서만 이동
 function nextTurn(){
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     const arr = Object.keys(s.val());
@@ -269,9 +265,16 @@ function resetRound(){
   });
 }
 
+// 🔥 카드 표시 수정 (없을 때도 표시)
 function render(list,target,hide){
   const el=document.getElementById(target);
   el.innerHTML="";
+
+  if(!list || list.length===0){
+    el.innerHTML="<div style='color:#888'>카드 없음</div>";
+    return;
+  }
+
   list.forEach(c=>{
     const d=document.createElement("div");
     d.className="card "+(hide?"hidden":"");
