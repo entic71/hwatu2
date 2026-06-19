@@ -44,8 +44,27 @@ button {
 .primary { background:#4CAF50; color:white; }
 .danger { background:#e53935; color:white; }
 .secondary { background:#424242; color:white; }
+.warning { background:#ff9800; color:white; }
 
 .box { background:#1c1f2b; padding:10px; margin:5px; border-radius:10px; }
+.info-box { background:#2a2d3a; padding:15px; margin:10px; border-radius:10px; border:2px solid #4CAF50; }
+
+.money-info { font-size:18px; font-weight:bold; color:#4CAF50; margin:10px 0; }
+.pot-info { font-size:16px; font-weight:bold; color:#ff9800; margin:10px 0; }
+.bet-history { font-size:12px; color:#aaa; margin:10px 0; }
+
+.button-group { display:flex; justify-content:center; gap:5px; }
+.button-group button { width:48%; }
+
+input[type="number"] {
+  width:85%;
+  padding:10px;
+  margin:10px;
+  border:none;
+  border-radius:5px;
+  font-size:16px;
+  text-align:center;
+}
 </style>
 </head>
 
@@ -73,9 +92,13 @@ button {
 </div>
 
 <div id="game" style="display:none;">
-  <h3 id="turnText"></h3>
+  <div class="info-box">
+    <div class="money-info">💰 내 자산: <span id="myMoney">10000</span>원</div>
+    <div class="pot-info">🎲 팟: <span id="potAmount">0</span>원</div>
+    <div class="bet-history" id="betHistory"></div>
+  </div>
 
-  <button class="primary" onclick="draw()">카드 뽑기</button>
+  <h3 id="turnText"></h3>
 
   <h3>내 카드</h3>
   <div id="myCards" class="cards"></div>
@@ -83,14 +106,28 @@ button {
   <h3>상대 카드</h3>
   <div id="enemyCards" class="cards"></div>
 
-  <button class="primary" onclick="call()">콜</button>
-  <button class="danger" onclick="die()">다이</button>
+  <div id="actionButtons" style="display:none;">
+    <div class="button-group">
+      <button class="primary" onclick="draw()">카드 뽑기</button>
+    </div>
+    <br>
+    <input type="number" id="betInput" placeholder="베팅 금액 입력" min="1000" step="1000" max="10000">
+    <div class="button-group">
+      <button class="warning" onclick="placeBet()">베팅</button>
+      <button class="primary" onclick="call()">콜</button>
+    </div>
+    <button class="danger" onclick="fold()">폴드</button>
+  </div>
+
+  <div id="gameEndBox" style="display:none;">
+    <h3 id="gameResult"></h3>
+    <button class="primary" onclick="resetGame()">다시 게임하기</button>
+  </div>
 </div>
 
 </div>
 
 <script>
-// 첫 번째 요청에서 주신 완전한 파이어베이스 설정 적용
 const firebaseConfig = {
   apiKey: "AIzaSyDfTOFchRqnH1ifrwgJ-F--qdzRGecs0Q8",
   authDomain: "bacarat-5e575.firebaseapp.com",
@@ -106,6 +143,8 @@ const db = firebase.database();
 
 let player = "";
 let room = "";
+let currentBet = 0;
+let gameActive = false;
 
 const deckBase = [
   "1","2","3","4","5","6","7","8","9","10",
@@ -118,13 +157,17 @@ function createRoom(){
   player = document.getElementById("name").value.trim();
   if(!player) return alert("닉네임을 입력해주세요.");
 
-  room = Math.random().toString(36).substring(2,6).toUpperCase(); // 4자리 코드 생성
+  room = Math.random().toString(36).substring(2,6).toUpperCase();
 
   db.ref("rooms/"+room).set({
     players:{},
     deck: shuffle([...deckBase]),
     started:false,
-    turn:null
+    turn:null,
+    pot:0,
+    bets:{},
+    gamePhase:"betting",
+    foldedPlayers:[]
   }).then(() => {
     joinCore();
   });
@@ -133,12 +176,11 @@ function createRoom(){
 // 방 입장
 function joinRoom(){
   player = document.getElementById("name").value.trim();
-  room = document.getElementById("roomInput").value.trim().toUpperCase(); // 공백 제거 및 대문자화
+  room = document.getElementById("roomInput").value.trim().toUpperCase();
 
   if(!player) return alert("닉네임을 입력해주세요.");
   if(!room) return alert("방 코드를 입력해주세요.");
 
-  // 방이 실제로 존재하는지 먼저 확인
   db.ref("rooms/"+room).once("value").then(snap => {
     if(!snap.exists()){
       alert("존재하지 않는 방 코드입니다.");
@@ -148,18 +190,19 @@ function joinRoom(){
   });
 }
 
-// 공통 입장 처리 및 UI 전환
+// 공통 입장 처리
 function joinCore(){
   const playerRef = db.ref("rooms/"+room+"/players/"+player);
 
   playerRef.set({
     cards:[],
-    money:10000
+    money:10000,
+    currentBet:0,
+    folded:false
   });
 
   playerRef.onDisconnect().remove();
 
-  // UI 상태 업데이트
   document.getElementById("authBox").style.display = "none";
   document.getElementById("roomCode").innerText = "방 코드: " + room;
   document.getElementById("lobby").style.display = "block";
@@ -176,15 +219,31 @@ function startGame(){
     }
 
     const first = Object.keys(s.val())[0];
+    const players = Object.keys(s.val());
 
     db.ref("rooms/"+room).update({
       started:true,
-      turn:first
+      turn:first,
+      pot:0,
+      bets:{},
+      gamePhase:"betting",
+      foldedPlayers:[]
     });
+
+    // 모든 플레이어 초기화
+    players.forEach(p => {
+      db.ref("rooms/"+room+"/players/"+p).update({
+        cards:[],
+        currentBet:0,
+        folded:false
+      });
+    });
+
+    gameActive = true;
   });
 }
 
-// 카드 뽑기 (섰다는 원래 2장씩 받으므로 2장으로 수정)
+// 카드 뽑기
 function draw(){
   db.ref("rooms/"+room+"/turn").once("value").then(s=>{
     if(s.val() !== player){
@@ -197,14 +256,104 @@ function draw(){
     deckRef.transaction(deck=>{
       if(!deck || deck.length < 2) return deck;
 
-      const my = deck.splice(0,2); // 섰다 규칙에 맞게 2장 분할
-
+      const my = deck.splice(0,2);
       db.ref("rooms/"+room+"/players/"+player+"/cards").set(my);
 
       return deck;
     });
 
+    db.ref("rooms/"+room).update({
+      gamePhase:"showdown"
+    });
+  });
+}
+
+// 베팅
+function placeBet(){
+  const betAmount = parseInt(document.getElementById("betInput").value);
+
+  if(!betAmount || betAmount < 1000){
+    alert("1000원 이상 베팅해주세요.");
+    return;
+  }
+
+  db.ref("rooms/"+room+"/players/"+player).once("value").then(snap=>{
+    const money = snap.val().money;
+    const currentBet = snap.val().currentBet || 0;
+
+    if(betAmount > money - currentBet){
+      alert("보유 금액이 부족합니다.");
+      return;
+    }
+
+    // 플레이어 돈 감소
+    db.ref("rooms/"+room+"/players/"+player).update({
+      money: money - betAmount,
+      currentBet: currentBet + betAmount
+    });
+
+    // 팟에 추가
+    db.ref("rooms/"+room).transaction(data=>{
+      data.pot = (data.pot || 0) + betAmount;
+      data.bets = data.bets || {};
+      data.bets[player] = (data.bets[player] || 0) + betAmount;
+      return data;
+    });
+
+    document.getElementById("betInput").value = "";
+    alert(betAmount + "원을 베팅했습니다!");
+
     nextTurn();
+  });
+}
+
+// 콜
+function call(){
+  db.ref("rooms/"+room).once("value").then(snap=>{
+    const maxBet = Object.values(snap.val().bets || {}).reduce((a,b) => Math.max(a,b), 0);
+
+    db.ref("rooms/"+room+"/players/"+player).once("value").then(s=>{
+      const money = s.val().money;
+      const currentBet = s.val().currentBet || 0;
+      const needBet = maxBet - currentBet;
+
+      if(needBet > money){
+        alert("보유 금액이 부족합니다.");
+        return;
+      }
+
+      // 콜 처리
+      db.ref("rooms/"+room+"/players/"+player).update({
+        money: money - needBet,
+        currentBet: maxBet
+      });
+
+      db.ref("rooms/"+room).transaction(data=>{
+        data.pot = (data.pot || 0) + needBet;
+        data.bets = data.bets || {};
+        data.bets[player] = maxBet;
+        return data;
+      });
+
+      nextTurn();
+    });
+  });
+}
+
+// 폴드
+function fold(){
+  db.ref("rooms/"+room+"/players/"+player).update({
+    folded:true
+  });
+
+  db.ref("rooms/"+room).transaction(data=>{
+    data.foldedPlayers = data.foldedPlayers || [];
+    if(!data.foldedPlayers.includes(player)){
+      data.foldedPlayers.push(player);
+    }
+    return data;
+  }).then(() => {
+    checkGameEnd();
   });
 }
 
@@ -212,36 +361,69 @@ function draw(){
 function nextTurn(){
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     const players = Object.keys(s.val());
-    const next = players.find(p=>p!==player);
+    const activePlayers = players.filter(p => !s.val()[p].folded);
+
+    if(activePlayers.length === 1){
+      endGame(activePlayers[0]);
+      return;
+    }
+
+    const currentIndex = players.indexOf(player);
+    const next = players[(currentIndex + 1) % players.length];
 
     db.ref("rooms/"+room+"/turn").set(next);
   });
 }
 
-// 콜
-function call(){
-  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
-    if(s.val() !== player){
-      alert("당신의 턴이 아닙니다.");
-      return;
+// 게임 종료 확인
+function checkGameEnd(){
+  db.ref("rooms/"+room).once("value").then(snap=>{
+    const players = Object.keys(snap.val().players || {});
+    const activePlayers = players.filter(p => !snap.val().players[p].folded);
+
+    if(activePlayers.length === 1){
+      endGame(activePlayers[0]);
     }
-    nextTurn();
   });
 }
 
-// 다이
-function die(){
-  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
-    if(s.val() !== player){
-      alert("당신의 턴이 아닙니다.");
-      return;
-    }
-    alert(player+" 다이!");
-    nextTurn();
+// 게임 끝
+function endGame(winner){
+  db.ref("rooms/"+room).once("value").then(snap=>{
+    const pot = snap.val().pot || 0;
+    const players = snap.val().players;
+
+    // 승자에게 팟 지급
+    db.ref("rooms/"+room+"/players/"+winner).once("value").then(s=>{
+      const money = s.val().money;
+      db.ref("rooms/"+room+"/players/"+winner).update({
+        money: money + pot
+      });
+
+      // 게임 결과 표시
+      document.getElementById("gameEndBox").style.display = "block";
+      document.getElementById("actionButtons").style.display = "none";
+      document.getElementById("gameResult").innerText = 
+        winner === player 
+          ? "🎉 축하합니다! 승리했습니다!\n+ " + pot + "원"
+          : "😞 패배했습니다.\n" + winner + "가 " + pot + "원을 획득했습니다.";
+
+      gameActive = false;
+    });
   });
 }
 
-// 카드 화면 표시
+// 다시 게임
+function resetGame(){
+  document.getElementById("gameEndBox").style.display = "none";
+  document.getElementById("actionButtons").style.display = "none";
+  document.getElementById("lobby").style.display = "block";
+  document.getElementById("game").style.display = "none";
+  currentBet = 0;
+  gameActive = false;
+}
+
+// 카드 표시
 function render(list, target, hide){
   const el = document.getElementById(target);
   el.innerHTML = "";
@@ -259,7 +441,7 @@ function shuffle(a){
   return a.sort(()=>Math.random()-0.5);
 }
 
-// 파이어베이스 실시간 리스너
+// 실시간 리스너
 function listen(){
   const roomRef = db.ref("rooms/"+room);
 
@@ -269,7 +451,8 @@ function listen(){
 
     let html="";
     for(let p in players){
-      html += `<div class="box">${p} ✔</div>`;
+      const folded = players[p].folded ? " ❌" : " ✔";
+      html += `<div class="box">${p}${folded} 💰 ${players[p].money}원</div>`;
     }
 
     if(Object.keys(players).length < 2){
@@ -278,11 +461,14 @@ function listen(){
 
     document.getElementById("players").innerHTML = html;
 
-    for(let p in players){
-      if(p === player){
-        render(players[p].cards||[], "myCards", false);
-      } else {
-        render(players[p].cards||[], "enemyCards", true);
+    // 게임 중일 때 카드 업데이트
+    if(gameActive){
+      for(let p in players){
+        if(p === player){
+          render(players[p].cards||[], "myCards", false);
+        } else {
+          render(players[p].cards||[], "enemyCards", players[p].cards.length > 0 ? true : false);
+        }
       }
     }
   });
@@ -291,6 +477,8 @@ function listen(){
     if(snap.val() === true){
       document.getElementById("lobby").style.display = "none";
       document.getElementById("game").style.display = "block";
+      document.getElementById("gameEndBox").style.display = "none";
+      document.getElementById("actionButtons").style.display = "block";
     }
   });
 
@@ -298,7 +486,27 @@ function listen(){
     const t = snap.val();
     if(!t) return;
     document.getElementById("turnText").innerText =
-      (t === player) ? "👉 내 턴입니다! 액션을 선택하세요." : "⏳ 상대방의 턴을 기다리는 중...";
+      (t === player) ? "👉 내 턴입니다! 액션을 선택하세요." : "⏳ " + t + "의 턴을 기다리는 중...";
+  });
+
+  roomRef.child("pot").on("value", snap=>{
+    document.getElementById("potAmount").innerText = (snap.val() || 0);
+  });
+
+  roomRef.child("bets").on("value", snap=>{
+    const bets = snap.val() || {};
+    let betText = "";
+    for(let p in bets){
+      if(p === player){
+        betText += `${p}: ${bets[p]}원\n`;
+      }
+    }
+    document.getElementById("betHistory").innerText = betText;
+  });
+
+  // 내 자산 실시간 업데이트
+  db.ref("rooms/"+room+"/players/"+player+"/money").on("value", snap=>{
+    document.getElementById("myMoney").innerText = snap.val() || 10000;
   });
 }
 </script>
