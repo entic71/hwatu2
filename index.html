@@ -343,8 +343,9 @@ function draw(){
                 alert("덱에 카드가 부족합니다.");
                 return;
               }
-              // 카드 지급 & 턴 넘기기
+              // 카드 지급 & phase를 drawn으로 변경 (이제 베팅만 가능)
               myCardsRef.set(drawnCards);
+              db.ref("rooms/"+room+"/phase").set("drawn");
               nextTurn();
             }
           );
@@ -378,8 +379,8 @@ function placeBet(){
   roomRef.once("value").then(snap=>{
     const data = snap.val();
 
-    if(data.phase === "idle"){
-      // 첫 베팅: 바로 적용
+    if(data.phase === "drawn"){
+      // 카드 뽑은 후 첫 베팅
       roomRef.update({
         pot: amount,
         currentBet: amount,
@@ -656,12 +657,14 @@ function listen(){
 }
 
 function updatePhaseUI(phase){
+  const drawArea   = document.getElementById("drawArea");
   const betArea    = document.getElementById("betArea");
   const actionArea = document.getElementById("actionArea");
   const raiseArea  = document.getElementById("raiseArea");
   const resultArea = document.getElementById("resultArea");
 
   // 일단 전부 숨기고 필요한 것만 열기
+  drawArea.style.display   = "none";
   betArea.style.display    = "none";
   actionArea.style.display = "none";
   raiseArea.style.display  = "none";
@@ -670,7 +673,8 @@ function updatePhaseUI(phase){
   if(!phase) phase = "idle";
 
   if(phase === "idle"){
-    betArea.style.display = "block";
+    // 라운드 시작 전 - 카드 뽑기만 가능, 베팅 불가
+    drawArea.style.display = "block";
 
   } else if(phase === "betting"){
     db.ref("rooms/"+room+"/bettor").once("value").then(s=>{
@@ -678,20 +682,22 @@ function updatePhaseUI(phase){
       if(bettor === player){
         // 내가 마지막 베팅 -> 상대 반응 대기 (아무것도 안 보임)
       } else {
-        // 상대가 베팅 -> 콜/다이/레이즈 가능
+        // 상대가 베팅 -> 콜/다이/레이즈 가능, 카드 뽑기 불가
         betArea.style.display    = "block";
         actionArea.style.display = "block";
       }
     });
 
+  } else if(phase === "drawn"){
+    // 카드 뽑은 후 - 베팅만 가능, 카드 뽑기 불가
+    betArea.style.display = "block";
+
   } else if(phase === "raise_pending"){
-    // 레이즈 제안이 올라온 상태
     db.ref("rooms/"+room).once("value").then(snap=>{
       const data = snap.val();
       if(data.raiseBy === player){
-        // 내가 레이즈 제안자 -> 상대 동의 대기 (아무것도 안 보임)
+        // 내가 레이즈 제안자 -> 상대 동의 대기
       } else {
-        // 상대가 레이즈 제안 -> 동의/거절 버튼 표시
         raiseArea.style.display = "block";
         document.getElementById("raiseText").innerText =
           `상대가 ${(data.pendingRaise||0).toLocaleString()}원을 더 올리자고 합니다!`;
