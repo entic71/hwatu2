@@ -163,7 +163,7 @@
 
   <div class="section-title">베팅</div>
   <div id="betArea">
-    <input id="betInput" type="number" placeholder="베팅 금액 (예: 1000)" min="1" step="100">
+    <input id="betInput" type="number" placeholder="베팅 금액" min="1">
     <br>
     <button class="gold" onclick="placeBet()">베팅하기 / 더 올리기</button>
   </div>
@@ -433,10 +433,10 @@ function die(){
       return;
     }
 
-    const winner = data.bettor; // 베팅한 사람이 가져감
-    const pot = data.pot;
+    const winner = data.bettor;         // 베팅한 사람이 가져감
+    const amount = data.currentBet||0;  // 다이 시엔 베팅금액만큼만 정산
 
-    awardPot(winner, pot);
+    awardPot(winner, amount);
   });
 }
 
@@ -471,8 +471,8 @@ function rejectRaise(){
       alert("자신의 레이즈를 거절할 수 없습니다.");
       return;
     }
-    // raiseBy(레이즈 제안자)가 기존 판돈 가져감, 거절한 사람(나)이 다이
-    awardPot(data.raiseBy, data.pot);
+    // raiseBy(레이즈 제안자)가 기존 베팅금만큼만 가져감, 거절한 사람(나)이 다이
+    awardPot(data.raiseBy, data.currentBet||0);
   });
 }
 
