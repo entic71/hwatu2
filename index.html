@@ -173,6 +173,12 @@
     <button class="danger half" onclick="die()">다이</button>
   </div>
 
+  <div id="raiseArea" style="display:none;">
+    <p id="raiseText" style="color:#f0d080; font-weight:bold;"></p>
+    <button class="primary half" onclick="acceptRaise()">동의 (판돈 올리기)</button>
+    <button class="danger half" onclick="rejectRaise()">거절 (다이)</button>
+  </div>
+
   <div id="resultArea" style="display:none;">
     <p style="color:#f0d080;">카드가 공개됐어요. 승자를 선택해주세요</p>
     <button class="primary" onclick="finishRound(true)">내가 이겼다</button>
@@ -298,36 +304,53 @@ function startGame(){
 // (예전 버전은 콜백 안에서 직접 set()을 호출해서 덱이 꼬이는 버그가 있었음)
 
 function draw(){
-  db.ref("rooms/"+room+"/turn").once("value").then(s=>{
-    if(s.val() !== player){
+  db.ref("rooms/"+room+"/turn").once("value").then(turnSnap=>{
+    if(turnSnap.val() !== player){
       alert("당신의 턴이 아닙니다.");
       return;
     }
 
-    const deckRef = db.ref("rooms/"+room+"/deck");
-    let drawnCards = null;
+    // 1단계: 내가 현재 들고 있는 카드를 덱에 반납하고 셔플
+    const myCardsRef = db.ref("rooms/"+room+"/players/"+player+"/cards");
+    const deckRef    = db.ref("rooms/"+room+"/deck");
 
-    deckRef.transaction(
-      deck=>{
-        if(!deck || deck.length < 2) return deck;
-        const copy = deck.slice();
-        drawnCards = copy.splice(0,2);
-        return copy;
-      },
-      (error, committed) => {
-        if(error){
-          console.error("카드 뽑기 트랜잭션 실패:", error);
-          return;
+    myCardsRef.once("value").then(cardSnap=>{
+      const heldCards = cardSnap.val() || [];
+
+      deckRef.transaction(
+        deck => {
+          const base = deck ? deck.slice() : [];
+          // 들고 있던 카드를 덱에 합치고 셔플
+          return shuffle([...base, ...heldCards]);
+        },
+        (error, committed) => {
+          if(error || !committed){
+            console.error("카드 반납 트랜잭션 실패:", error);
+            return;
+          }
+
+          // 2단계: 셔플된 덱에서 새로 2장 뽑기
+          let drawnCards = null;
+          deckRef.transaction(
+            deck => {
+              if(!deck || deck.length < 2) return deck;
+              const copy = deck.slice();
+              drawnCards = copy.splice(0, 2);
+              return copy;
+            },
+            (err2, committed2) => {
+              if(err2 || !committed2 || !drawnCards){
+                alert("덱에 카드가 부족합니다.");
+                return;
+              }
+              // 카드 지급 & 턴 넘기기
+              myCardsRef.set(drawnCards);
+              nextTurn();
+            }
+          );
         }
-        if(!committed || !drawnCards){
-          alert("덱에 카드가 부족합니다.");
-          return;
-        }
-        // 트랜잭션이 확정된 후 단 한 번만 카드 지급
-        db.ref("rooms/"+room+"/players/"+player+"/cards").set(drawnCards);
-        nextTurn();
-      }
-    );
+      );
+    });
   });
 }
 
@@ -356,20 +379,19 @@ function placeBet(){
     const data = snap.val();
 
     if(data.phase === "idle"){
-      // 첫 베팅
+      // 첫 베팅: 바로 적용
       roomRef.update({
         pot: amount,
         currentBet: amount,
         bettor: player,
         phase: "betting"
       });
-    } else if(data.phase === "betting"){
-      // 누구든 추가로 베팅금을 더 올릴 수 있음 (무제한 레이즈)
+    } else if(data.phase === "betting" && data.bettor !== player){
+      // 상대방이 베팅한 상황에서 내가 레이즈: 상대 동의 필요
       roomRef.update({
-        pot: data.pot + amount,
-        currentBet: amount,
-        bettor: player,
-        phase: "betting"
+        pendingRaise: amount,   // 제안한 추가 금액
+        raiseBy: player,        // 레이즈 제안자
+        phase: "raise_pending"  // 상대방 동의 대기
       });
     } else {
       alert("지금은 베팅할 수 없습니다.");
@@ -418,6 +440,42 @@ function die(){
   });
 }
 
+// 레이즈 동의 -> 판돈에 추가 금액 합산 후 betting 유지
+function acceptRaise(){
+  const roomRef = db.ref("rooms/"+room);
+  roomRef.once("value").then(snap=>{
+    const data = snap.val();
+    if(data.phase !== "raise_pending") return;
+    if(data.raiseBy === player){
+      alert("자신의 레이즈에 동의할 수 없습니다.");
+      return;
+    }
+    roomRef.update({
+      pot: (data.pot||0) + (data.pendingRaise||0),
+      currentBet: data.pendingRaise,
+      bettor: data.raiseBy,
+      pendingRaise: null,
+      raiseBy: null,
+      phase: "betting"
+    });
+  });
+}
+
+// 레이즈 거절 -> 거절한 사람이 다이 (레이즈 제안자가 기존 판돈 가져감)
+function rejectRaise(){
+  const roomRef = db.ref("rooms/"+room);
+  roomRef.once("value").then(snap=>{
+    const data = snap.val();
+    if(data.phase !== "raise_pending") return;
+    if(data.raiseBy === player){
+      alert("자신의 레이즈를 거절할 수 없습니다.");
+      return;
+    }
+    // raiseBy(레이즈 제안자)가 기존 판돈 가져감, 거절한 사람(나)이 다이
+    awardPot(data.raiseBy, data.pot);
+  });
+}
+
 function finishRound(iWon){
   db.ref("rooms/"+room+"/players").once("value").then(s=>{
     const players = Object.keys(s.val());
@@ -433,28 +491,22 @@ function awardPot(winner, pot){
     const players = s.val();
     const loser = Object.keys(players).find(p=>p!==winner);
 
-    // 현재 패를 덱에 되돌리기
-    const currentCards = [...(players[winner].cards||[]), ...(players[loser].cards||[])];
-
     const updates = {};
     updates["players/"+winner+"/score"] = (players[winner].score||0) + pot;
-    updates["players/"+loser+"/score"] = (players[loser].score||0) - pot;
+    updates["players/"+loser+"/score"]  = (players[loser].score||0) - pot;
     updates["players/"+winner+"/cards"] = [];
-    updates["players/"+loser+"/cards"] = [];
-    updates["pot"] = 0;
-    updates["currentBet"] = 0;
-    updates["bettor"] = null;
-    updates["phase"] = "idle";
-    updates["revealed"] = false;
-    updates["turn"] = winner; // 다음 라운드는 승자부터
+    updates["players/"+loser+"/cards"]  = [];
+    updates["pot"]          = 0;
+    updates["currentBet"]   = 0;
+    updates["bettor"]       = null;
+    updates["pendingRaise"] = null;
+    updates["raiseBy"]      = null;
+    updates["phase"]        = "idle";
+    updates["revealed"]     = false;
+    updates["turn"]         = winner; // 다음 라운드는 승자부터
+    updates["deck"]         = shuffle(buildDeck()); // 덱 완전 재생성
 
-    // 덱에 현재 카드를 추가하고 섞기
-    db.ref("rooms/"+room+"/deck").once("value").then(deckSnap=>{
-      const currentDeck = deckSnap.val() || [];
-      const newDeck = shuffle([...currentDeck, ...currentCards]);
-      updates["deck"] = newDeck;
-      db.ref("rooms/"+room).update(updates);
-    });
+    db.ref("rooms/"+room).update(updates);
   });
 }
 
@@ -596,37 +648,57 @@ function listen(){
   roomRef.child("bettor").on("value", ()=>{
     roomRef.child("phase").once("value").then(s=>updatePhaseUI(s.val()));
   });
+
+  // 레이즈 제안이 올라오거나 처리될 때 UI 갱신
+  roomRef.child("raiseBy").on("value", ()=>{
+    roomRef.child("phase").once("value").then(s=>updatePhaseUI(s.val()));
+  });
 }
 
 function updatePhaseUI(phase){
-  const betArea = document.getElementById("betArea");
+  const betArea    = document.getElementById("betArea");
   const actionArea = document.getElementById("actionArea");
+  const raiseArea  = document.getElementById("raiseArea");
   const resultArea = document.getElementById("resultArea");
+
+  // 일단 전부 숨기고 필요한 것만 열기
+  betArea.style.display    = "none";
+  actionArea.style.display = "none";
+  raiseArea.style.display  = "none";
+  resultArea.style.display = "none";
 
   if(!phase) phase = "idle";
 
   if(phase === "idle"){
     betArea.style.display = "block";
-    actionArea.style.display = "none";
-    resultArea.style.display = "none";
+
   } else if(phase === "betting"){
     db.ref("rooms/"+room+"/bettor").once("value").then(s=>{
       const bettor = s.val();
       if(bettor === player){
-        // 내가 마지막으로 베팅(레이즈)한 사람 -> 상대 반응 대기
-        betArea.style.display = "none";
-        actionArea.style.display = "none";
-        resultArea.style.display = "none";
+        // 내가 마지막 베팅 -> 상대 반응 대기 (아무것도 안 보임)
       } else {
-        // 상대가 베팅(레이즈)함 -> 콜/다이/추가 레이즈 가능
-        betArea.style.display = "block";
+        // 상대가 베팅 -> 콜/다이/레이즈 가능
+        betArea.style.display    = "block";
         actionArea.style.display = "block";
-        resultArea.style.display = "none";
       }
     });
+
+  } else if(phase === "raise_pending"){
+    // 레이즈 제안이 올라온 상태
+    db.ref("rooms/"+room).once("value").then(snap=>{
+      const data = snap.val();
+      if(data.raiseBy === player){
+        // 내가 레이즈 제안자 -> 상대 동의 대기 (아무것도 안 보임)
+      } else {
+        // 상대가 레이즈 제안 -> 동의/거절 버튼 표시
+        raiseArea.style.display = "block";
+        document.getElementById("raiseText").innerText =
+          `상대가 ${(data.pendingRaise||0).toLocaleString()}원을 더 올리자고 합니다!`;
+      }
+    });
+
   } else if(phase === "waiting_result"){
-    betArea.style.display = "none";
-    actionArea.style.display = "none";
     resultArea.style.display = "block";
   }
 }
