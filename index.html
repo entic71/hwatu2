@@ -4,189 +4,152 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>온라인 섰다</title>
-
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
 <style>
   * { box-sizing: border-box; }
-  body {
-    margin:0;
-    background:#0b0f1a;
-    color:white;
-    font-family:sans-serif;
-    text-align:center;
-  }
+  body { margin:0; background:#0b0f1a; color:white; font-family:sans-serif; text-align:center; }
   .container { padding:15px; max-width:480px; margin:0 auto; }
 
   .card {
-    width:60px; height:90px;
-    margin:5px;
-    border-radius:10px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:white;
-    color:black;
-    font-weight:bold;
-    font-size:20px;
+    width:60px; height:90px; margin:5px;
+    border-radius:10px; display:flex;
+    align-items:center; justify-content:center;
+    background:white; color:black;
+    font-weight:bold; font-size:20px;
     animation:pop 0.3s ease;
   }
   .card.special { border:3px solid #caa24a; }
-  .hidden { background:#333; color:#333; }
+  .card.hidden { background:#333; color:#333; }
   .cards { display:flex; justify-content:center; min-height:100px; flex-wrap:wrap; }
 
   @keyframes pop {
     from { transform:scale(0.5); opacity:0; }
-    to { transform:scale(1); opacity:1; }
+    to   { transform:scale(1);   opacity:1; }
   }
 
   button {
-    width:90%;
-    padding:15px;
-    margin:5px;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
-    cursor:pointer;
-    font-weight:bold;
+    width:90%; padding:15px; margin:5px;
+    border:none; border-radius:10px;
+    font-size:16px; cursor:pointer; font-weight:bold;
   }
-  button:disabled {
-    opacity:0.4;
-    cursor:not-allowed;
-  }
-  .primary { background:#4CAF50; color:white; }
-  .danger { background:#e53935; color:white; }
-  .secondary { background:#424242; color:white; }
-  .gold { background:#caa24a; color:white; }
-  .half { width:42%; display:inline-block; }
+  .btn-green  { background:#4CAF50; color:white; }
+  .btn-red    { background:#e53935; color:white; }
+  .btn-gray   { background:#424242; color:white; }
+  .btn-gold   { background:#caa24a; color:white; }
+  .btn-half   { width:43%; display:inline-block; margin:4px 1%; }
 
   .box { background:#1c1f2b; padding:10px; margin:5px; border-radius:10px; }
 
   input[type="text"], input[type="number"] {
-    width:85%;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:8px;
-    border:1px solid #333;
-    background:#1c1f2b;
-    color:white;
+    width:85%; padding:10px; margin-bottom:10px;
+    border-radius:8px; border:1px solid #333;
+    background:#1c1f2b; color:white; font-size:15px;
   }
 
-  .score-board {
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    margin:10px 0;
-    flex-wrap:wrap;
-  }
-  .score-card {
-    background:#1c1f2b;
-    border-radius:10px;
-    padding:10px 16px;
-    min-width:110px;
-  }
-  .score-card .name { font-size:13px; color:#aaa; margin-bottom:4px; }
+  .score-board { display:flex; justify-content:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
+  .score-card  { background:#1c1f2b; border-radius:10px; padding:10px 16px; min-width:110px; }
+  .score-card .name   { font-size:13px; color:#aaa; margin-bottom:4px; }
   .score-card .amount { font-size:22px; font-weight:bold; }
-  .plus { color:#4CAF50; }
+  .plus  { color:#4CAF50; }
   .minus { color:#e53935; }
-  .zero { color:#fff; }
 
-  .bet-pot {
-    background:#2a2410;
-    border:1px solid #caa24a;
-    border-radius:10px;
-    padding:10px;
-    margin:10px 0;
-    font-size:18px;
-    font-weight:bold;
-    color:#f0d080;
+  .pot-box {
+    background:#2a2410; border:1px solid #caa24a;
+    border-radius:10px; padding:10px; margin:10px 0;
+    font-size:18px; font-weight:bold; color:#f0d080;
   }
-
-  .section-title {
-    font-size:14px;
-    color:#888;
-    margin:15px 0 5px;
-  }
-
-  .reveal-label {
-    font-size:13px;
-    color:#caa24a;
-    margin-top:4px;
-  }
+  .label { font-size:13px; color:#888; margin:14px 0 4px; }
+  .notice { color:#f0d080; font-size:15px; margin:8px 0; }
+  .tag { font-size:12px; color:#caa24a; margin-top:4px; }
 </style>
 </head>
-
 <body>
-
 <div class="container">
 
 <h2>🃏 온라인 섰다</h2>
 
+<!-- 로그인 -->
 <div id="authBox" class="box">
   <input id="name" type="text" placeholder="닉네임"><br>
-  <button class="primary" onclick="createRoom()">방 만들기</button>
+  <button class="btn-green" onclick="createRoom()">방 만들기</button>
   <hr style="border:0.5px solid #333; margin:15px 0;">
   <input id="roomInput" type="text" placeholder="방 코드 4자리"><br>
-  <button class="secondary" onclick="joinRoom()">방 입장하기</button>
+  <button class="btn-gray" onclick="joinRoom()">방 입장하기</button>
 </div>
 
 <h3 id="roomCode"></h3>
 
+<!-- 로비 -->
 <div id="lobby" style="display:none;">
   <h3>👥 참여 플레이어</h3>
-  <div id="players"></div>
+  <div id="lobbyPlayers"></div>
   <br>
-  <button class="primary" onclick="startGame()">게임 시작</button>
+  <button class="btn-green" onclick="startGame()">게임 시작</button>
 </div>
 
+<!-- 게임 -->
 <div id="game" style="display:none;">
 
-  <div class="section-title">점수</div>
+  <div class="label">점수</div>
   <div class="score-board" id="scoreBoard"></div>
 
-  <div id="potDisplay" class="bet-pot" style="display:none;"></div>
+  <div id="potBox" class="pot-box" style="display:none;"></div>
+  <p id="statusText" style="font-size:15px; color:#aaa;"></p>
 
-  <h3 id="turnText"></h3>
-
-  <div id="drawArea">
-    <button class="primary" onclick="draw()">카드 뽑기</button>
+  <!-- 카드 뽑기 -->
+  <div id="ui-drawing" style="display:none;">
+    <button class="btn-green" onclick="draw()">🂠 카드 뽑기</button>
   </div>
 
-  <h3>내 카드</h3>
+  <!-- 카드 영역 -->
+  <div class="label">내 카드</div>
   <div id="myCards" class="cards"></div>
-  <div id="myRevealLabel" class="reveal-label" style="display:none;"></div>
+  <div id="myTag" class="tag" style="display:none;">공개됨</div>
 
-  <h3>상대 카드</h3>
+  <div class="label">상대 카드</div>
   <div id="enemyCards" class="cards"></div>
-  <div id="enemyRevealLabel" class="reveal-label" style="display:none;"></div>
+  <div id="enemyTag" class="tag" style="display:none;">공개됨</div>
 
-  <div class="section-title">베팅</div>
-  <div id="betArea">
-    <input id="betInput" type="number" placeholder="베팅 금액" min="1">
+  <!-- 베팅 입력 -->
+  <div id="ui-bet-input" style="display:none;">
+    <div class="label">베팅</div>
+    <input id="betInput" type="number" placeholder="금액 입력" min="1">
     <br>
-    <button class="gold" onclick="placeBet()">베팅하기 / 더 올리기</button>
+    <button class="btn-gold" onclick="placeBet()">베팅하기</button>
   </div>
 
-  <div id="actionArea" style="display:none;">
-    <button class="primary half" onclick="call()">콜 (카드 공개)</button>
-    <button class="danger half" onclick="die()">다이</button>
+  <!-- 상대 베팅에 대한 반응: 콜/다이, + 추가 레이즈 -->
+  <div id="ui-respond" style="display:none;">
+    <div class="label">베팅</div>
+    <input id="raiseInput" type="number" placeholder="레이즈 금액 입력" min="1">
+    <br>
+    <button class="btn-gold" style="width:90%;" onclick="requestRaise()">레이즈 요청</button>
+    <br>
+    <button class="btn-green btn-half" onclick="call()">콜</button>
+    <button class="btn-red   btn-half" onclick="die()">다이</button>
   </div>
 
-  <div id="raiseArea" style="display:none;">
-    <p id="raiseText" style="color:#f0d080; font-weight:bold;"></p>
-    <button class="primary half" onclick="acceptRaise()">동의 (판돈 올리기)</button>
-    <button class="danger half" onclick="rejectRaise()">거절 (다이)</button>
+  <!-- 레이즈 동의 대기 -->
+  <div id="ui-raise-wait" style="display:none;">
+    <p class="notice">상대방의 레이즈 동의를 기다리는 중...</p>
   </div>
 
-  <div id="resultArea" style="display:none;">
-    <p style="color:#f0d080;">카드가 공개됐어요. 승자를 선택해주세요</p>
-    <button class="primary" onclick="finishRound(true)">내가 이겼다</button>
-    <button class="secondary" onclick="finishRound(false)">상대가 이겼다</button>
+  <!-- 레이즈 동의 요청 -->
+  <div id="ui-raise-ask" style="display:none;">
+    <p id="raiseAskText" class="notice"></p>
+    <button class="btn-green btn-half" onclick="acceptRaise()">동의 (올리기)</button>
+    <button class="btn-red   btn-half" onclick="rejectRaise()">거절 (다이)</button>
+  </div>
+
+  <!-- 승자 선택 -->
+  <div id="ui-result" style="display:none;">
+    <p class="notice">카드가 공개됐습니다. 승자를 선택하세요</p>
+    <button class="btn-green" onclick="finishRound(true)">내가 이겼다</button>
+    <button class="btn-gray"  onclick="finishRound(false)">상대가 이겼다</button>
   </div>
 
 </div>
-
 </div>
 
 <script>
@@ -199,516 +162,447 @@ const firebaseConfig = {
   messagingSenderId: "805374159280",
   appId: "1:805374159280:web:7b4d1bd628b29341ee4e75"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let player = "";
-let room = "";
+let room   = "";
 
-// 섰다 덱: 1~10 각 2장 = 총 20장.
-// 같은 숫자 카드 중 하나는 특수패(보통 "광") 취급 -> 숫자 뒤에 "." 표시
+// ── 덱 ──────────────────────────────────────────
 function buildDeck(){
   const deck = [];
   for(let n = 1; n <= 10; n++){
-    deck.push(String(n));       // 일반패
-    deck.push(String(n) + ".");  // 특수패(광 등)
+    deck.push(String(n));
+    deck.push(String(n) + ".");
   }
   return deck;
 }
+function shuffle(a){ return a.sort(() => Math.random() - 0.5); }
 
-// ---------- 방 생성 / 입장 ----------
-
+// ── 방 생성/입장 ─────────────────────────────────
 function createRoom(){
   player = document.getElementById("name").value.trim();
   if(!player) return alert("닉네임을 입력해주세요.");
-
   room = Math.random().toString(36).substring(2,6).toUpperCase();
-
-  db.ref("rooms/"+room).set({
-    players:{},
-    deck: shuffle(buildDeck()),
-    started:false,
-    turn:null,
-    pot:0,
-    currentBet:0,
-    bettor:null,
-    revealed:false,
-    phase:"idle" // idle -> betting -> waiting_result
-  }).then(() => {
-    joinCore();
-  });
+  db.ref("rooms/"+room).set(freshRoomState()).then(joinCore);
 }
 
 function joinRoom(){
-  player = document.getElementById("name").value.trim();
-  room = document.getElementById("roomInput").value.trim().toUpperCase();
-
+  player    = document.getElementById("name").value.trim();
+  room      = document.getElementById("roomInput").value.trim().toUpperCase();
   if(!player) return alert("닉네임을 입력해주세요.");
-  if(!room) return alert("방 코드를 입력해주세요.");
-
+  if(!room)   return alert("방 코드를 입력해주세요.");
   db.ref("rooms/"+room).once("value").then(snap => {
-    if(!snap.exists()){
-      alert("존재하지 않는 방 코드입니다.");
-      return;
-    }
+    if(!snap.exists()) return alert("존재하지 않는 방 코드입니다.");
     joinCore();
   });
 }
 
 function joinCore(){
-  const playerRef = db.ref("rooms/"+room+"/players/"+player);
-
-  playerRef.set({
-    cards:[],
-    score:0
-  });
-
-  playerRef.onDisconnect().remove();
-
-  document.getElementById("authBox").style.display = "none";
-  document.getElementById("roomCode").innerText = "방 코드: " + room;
-  document.getElementById("lobby").style.display = "block";
-
+  const ref = db.ref("rooms/"+room+"/players/"+player);
+  ref.set({ cards:[], score:0, hasDrawn:false });
+  ref.onDisconnect().remove();
+  document.getElementById("authBox").style.display  = "none";
+  document.getElementById("roomCode").innerText     = "방 코드: " + room;
+  document.getElementById("lobby").style.display    = "block";
   listen();
 }
 
-// ---------- 게임 시작 ----------
+// 방 초기 상태
+function freshRoomState(){
+  return {
+    players: {},
+    deck: shuffle(buildDeck()),
+    started: false,
+    turn: null,
+    phase: "drawing",   // drawing | betting | raise_pending | waiting_result
+    pot: 0,
+    currentBet: 0,
+    bettor: null,
+    pendingRaise: 0,
+    raiseBy: null,
+    revealed: false
+  };
+}
 
+// ── 게임 시작 ─────────────────────────────────────
 function startGame(){
-  db.ref("rooms/"+room+"/players").once("value").then(s=>{
-    if(s.numChildren() < 2){
-      alert("최소 2명의 플레이어가 필요합니다.");
-      return;
-    }
-
+  db.ref("rooms/"+room+"/players").once("value").then(s => {
+    if(s.numChildren() < 2) return alert("최소 2명이 필요합니다.");
     const first = Object.keys(s.val())[0];
-
     db.ref("rooms/"+room).update({
-      started:true,
-      turn:first,
-      phase:"idle",
-      pot:0,
-      currentBet:0,
-      bettor:null,
-      revealed:false,
+      started: true,
+      turn: first,
+      phase: "drawing",
+      pot: 0, currentBet: 0,
+      bettor: null, pendingRaise: 0, raiseBy: null,
+      revealed: false,
       deck: shuffle(buildDeck())
     });
+    // 모든 플레이어 hasDrawn 초기화
+    for(let p in s.val()){
+      db.ref("rooms/"+room+"/players/"+p+"/hasDrawn").set(false);
+    }
   });
 }
 
-// ---------- 카드 뽑기 ----------
-// transaction 콜백은 충돌 시 여러 번 재실행될 수 있으므로,
-// 콜백 안에서는 deck 배열 계산만 하고 실제 카드 지급(다른 경로 쓰기)은
-// transaction이 완전히 끝난 뒤 onComplete에서 단 한 번만 수행한다.
-// (예전 버전은 콜백 안에서 직접 set()을 호출해서 덱이 꼬이는 버그가 있었음)
-
+// ── 카드 뽑기 ─────────────────────────────────────
+// 조건: phase===drawing & 내 turn & 아직 안 뽑음(hasDrawn===false)
 function draw(){
-  db.ref("rooms/"+room+"/turn").once("value").then(turnSnap=>{
-    if(turnSnap.val() !== player){
-      alert("당신의 턴이 아닙니다.");
-      return;
+  const roomRef = db.ref("rooms/"+room);
+
+  roomRef.once("value").then(snap => {
+    const data = snap.val();
+    if(data.phase !== "drawing"){
+      return alert("지금은 카드를 뽑을 수 없습니다.");
+    }
+    if(data.turn !== player){
+      return alert("내 턴이 아닙니다.");
+    }
+    if(data.players[player].hasDrawn){
+      return alert("이미 뽑았습니다.");
     }
 
-    // 1단계: 내가 현재 들고 있는 카드를 덱에 반납하고 셔플
-    const myCardsRef = db.ref("rooms/"+room+"/players/"+player+"/cards");
     const deckRef    = db.ref("rooms/"+room+"/deck");
+    const myCardsRef = db.ref("rooms/"+room+"/players/"+player+"/cards");
+    const heldCards  = data.players[player].cards || [];
 
-    myCardsRef.once("value").then(cardSnap=>{
-      const heldCards = cardSnap.val() || [];
+    // 1) 들고 있던 카드 반납 + 셔플
+    deckRef.transaction(
+      deck => shuffle([...(deck||[]), ...heldCards]),
+      (err, committed) => {
+        if(err || !committed) return console.error("반납 실패", err);
 
-      deckRef.transaction(
-        deck => {
-          const base = deck ? deck.slice() : [];
-          // 들고 있던 카드를 덱에 합치고 셔플
-          return shuffle([...base, ...heldCards]);
-        },
-        (error, committed) => {
-          if(error || !committed){
-            console.error("카드 반납 트랜잭션 실패:", error);
-            return;
-          }
+        // 2) 새 카드 2장 뽑기
+        let drawn = null;
+        deckRef.transaction(
+          deck => {
+            if(!deck || deck.length < 2) return deck;
+            const copy = deck.slice();
+            drawn = copy.splice(0, 2);
+            return copy;
+          },
+          (err2, committed2) => {
+            if(err2 || !committed2 || !drawn) return alert("덱 카드 부족");
 
-          // 2단계: 셔플된 덱에서 새로 2장 뽑기
-          let drawnCards = null;
-          deckRef.transaction(
-            deck => {
-              if(!deck || deck.length < 2) return deck;
-              const copy = deck.slice();
-              drawnCards = copy.splice(0, 2);
-              return copy;
-            },
-            (err2, committed2) => {
-              if(err2 || !committed2 || !drawnCards){
-                alert("덱에 카드가 부족합니다.");
-                return;
-              }
-              // 카드 지급 & phase를 drawn으로 변경 (이제 베팅만 가능)
-              myCardsRef.set(drawnCards);
-              db.ref("rooms/"+room+"/phase").set("drawn");
-              nextTurn();
+            // 3) 카드 지급 & hasDrawn = true
+            myCardsRef.set(drawn);
+            db.ref("rooms/"+room+"/players/"+player+"/hasDrawn").set(true);
+
+            // 4) 상대방도 뽑았는지 확인
+            const players    = data.players;
+            const otherName  = Object.keys(players).find(p => p !== player);
+            const otherDrawn = players[otherName] && players[otherName].hasDrawn;
+
+            if(otherDrawn){
+              // 둘 다 뽑음 → 베팅 단계로
+              db.ref("rooms/"+room).update({
+                phase: "betting",
+                bettor: null,
+                currentBet: 0
+              });
+            } else {
+              // 상대 차례로 넘기기
+              db.ref("rooms/"+room+"/turn").set(otherName);
             }
-          );
-        }
-      );
-    });
+          }
+        );
+      }
+    );
   });
 }
 
-function nextTurn(){
-  db.ref("rooms/"+room+"/players").once("value").then(s=>{
-    const players = Object.keys(s.val());
-    const next = players.find(p=>p!==player);
-    db.ref("rooms/"+room+"/turn").set(next);
-  });
-}
-
-// ---------- 베팅 흐름 ----------
-// phase: idle(베팅 전) -> betting(누군가 베팅함, 상대 반응 대기) -> waiting_result(콜 눌러서 카드 공개 + 승자 선택 대기)
-// 판돈은 횟수/금액 제한 없이 계속 올릴 수 있음(레이즈 무제한)
-
+// ── 베팅 ─────────────────────────────────────────
+// phase===betting, bettor===null 또는 내가 bettor가 아닐 때 첫 베팅/레이즈 가능
 function placeBet(){
   const amount = parseInt(document.getElementById("betInput").value, 10);
-  if(!amount || amount <= 0){
-    alert("올바른 베팅 금액을 입력해주세요.");
-    return;
-  }
-
-  const roomRef = db.ref("rooms/"+room);
-
-  roomRef.once("value").then(snap=>{
-    const data = snap.val();
-
-    if(data.phase === "drawn"){
-      // 카드 뽑은 후 첫 베팅
-      roomRef.update({
-        pot: amount,
-        currentBet: amount,
-        bettor: player,
-        phase: "betting"
-      });
-    } else if(data.phase === "betting" && data.bettor !== player){
-      // 상대방이 베팅한 상황에서 내가 레이즈: 상대 동의 필요
-      roomRef.update({
-        pendingRaise: amount,   // 제안한 추가 금액
-        raiseBy: player,        // 레이즈 제안자
-        phase: "raise_pending"  // 상대방 동의 대기
-      });
-    } else {
-      alert("지금은 베팅할 수 없습니다.");
-    }
-  });
-
+  if(!amount || amount <= 0) return alert("금액을 입력해주세요.");
   document.getElementById("betInput").value = "";
-}
 
-function call(){
-  db.ref("rooms/"+room).once("value").then(snap=>{
+  db.ref("rooms/"+room).once("value").then(snap => {
     const data = snap.val();
-    if(data.phase !== "betting"){
-      alert("지금은 콜할 수 없습니다.");
-      return;
-    }
-    if(data.bettor === player){
-      alert("자신의 베팅에는 콜할 수 없습니다.");
-      return;
-    }
-    // 콜한 사람도 같은 금액을 추가로 pot에 넣고, 양쪽 카드를 공개
+    if(data.phase !== "betting") return alert("지금은 베팅할 수 없습니다.");
+
     db.ref("rooms/"+room).update({
-      pot: data.pot + data.currentBet,
-      phase: "waiting_result",
-      revealed: true
+      pot: (data.pot||0) + amount,
+      currentBet: amount,
+      bettor: player
     });
   });
 }
 
-function die(){
-  db.ref("rooms/"+room).once("value").then(snap=>{
+// 레이즈 요청 (상대 동의 필요)
+function requestRaise(){
+  const amount = parseInt(document.getElementById("raiseInput").value, 10);
+  if(!amount || amount <= 0) return alert("레이즈 금액을 입력해주세요.");
+  document.getElementById("raiseInput").value = "";
+
+  db.ref("rooms/"+room).once("value").then(snap => {
     const data = snap.val();
-    if(data.phase !== "betting"){
-      alert("지금은 다이할 수 없습니다.");
-      return;
-    }
-    if(data.bettor === player){
-      alert("자신의 베팅에는 다이할 수 없습니다.");
-      return;
-    }
+    if(data.phase !== "betting") return alert("지금은 레이즈할 수 없습니다.");
+    if(data.bettor === player) return alert("자신의 베팅에 레이즈할 수 없습니다.");
 
-    const winner = data.bettor;         // 베팅한 사람이 가져감
-    const amount = data.currentBet||0;  // 다이 시엔 베팅금액만큼만 정산
-
-    awardPot(winner, amount);
+    db.ref("rooms/"+room).update({
+      phase: "raise_pending",
+      pendingRaise: amount,
+      raiseBy: player
+    });
   });
 }
 
-// 레이즈 동의 -> 판돈에 추가 금액 합산 후 betting 유지
+// 레이즈 동의
 function acceptRaise(){
-  const roomRef = db.ref("rooms/"+room);
-  roomRef.once("value").then(snap=>{
+  db.ref("rooms/"+room).once("value").then(snap => {
     const data = snap.val();
     if(data.phase !== "raise_pending") return;
-    if(data.raiseBy === player){
-      alert("자신의 레이즈에 동의할 수 없습니다.");
-      return;
-    }
-    roomRef.update({
+    if(data.raiseBy === player) return alert("자신의 레이즈에 동의할 수 없습니다.");
+
+    db.ref("rooms/"+room).update({
       pot: (data.pot||0) + (data.pendingRaise||0),
       currentBet: data.pendingRaise,
       bettor: data.raiseBy,
-      pendingRaise: null,
+      pendingRaise: 0,
       raiseBy: null,
       phase: "betting"
     });
   });
 }
 
-// 레이즈 거절 -> 거절한 사람이 다이 (레이즈 제안자가 기존 판돈 가져감)
+// 레이즈 거절 → 거절한 사람이 다이, 레이즈 제안자가 currentBet만큼 가져감
 function rejectRaise(){
-  const roomRef = db.ref("rooms/"+room);
-  roomRef.once("value").then(snap=>{
+  db.ref("rooms/"+room).once("value").then(snap => {
     const data = snap.val();
     if(data.phase !== "raise_pending") return;
-    if(data.raiseBy === player){
-      alert("자신의 레이즈를 거절할 수 없습니다.");
-      return;
-    }
-    // raiseBy(레이즈 제안자)가 기존 베팅금만큼만 가져감, 거절한 사람(나)이 다이
+    if(data.raiseBy === player) return alert("자신의 레이즈를 거절할 수 없습니다.");
     awardPot(data.raiseBy, data.currentBet||0);
   });
 }
 
-function finishRound(iWon){
-  db.ref("rooms/"+room+"/players").once("value").then(s=>{
-    const players = Object.keys(s.val());
-    const actualWinner = iWon ? player : players.find(p=>p!==player);
-    db.ref("rooms/"+room+"/pot").once("value").then(potSnap=>{
-      awardPot(actualWinner, potSnap.val());
+// 콜 → pot에 currentBet 추가, 카드 공개, 승자 선택
+function call(){
+  db.ref("rooms/"+room).once("value").then(snap => {
+    const data = snap.val();
+    if(data.phase !== "betting") return alert("지금은 콜할 수 없습니다.");
+    if(!data.bettor) return alert("아직 베팅이 없습니다.");
+    if(data.bettor === player) return alert("자신의 베팅에 콜할 수 없습니다.");
+
+    db.ref("rooms/"+room).update({
+      pot: (data.pot||0) + (data.currentBet||0),
+      phase: "waiting_result",
+      revealed: true
     });
   });
 }
 
-function awardPot(winner, pot){
-  db.ref("rooms/"+room+"/players").once("value").then(s=>{
-    const players = s.val();
-    const loser = Object.keys(players).find(p=>p!==winner);
+// 다이 → 베팅한 사람이 currentBet만큼 가져감
+function die(){
+  db.ref("rooms/"+room).once("value").then(snap => {
+    const data = snap.val();
+    if(data.phase !== "betting") return alert("지금은 다이할 수 없습니다.");
+    if(!data.bettor) return alert("아직 베팅이 없습니다.");
+    if(data.bettor === player) return alert("자신의 베팅에 다이할 수 없습니다.");
+    awardPot(data.bettor, data.currentBet||0);
+  });
+}
 
-    const updates = {};
-    updates["players/"+winner+"/score"] = (players[winner].score||0) + pot;
-    updates["players/"+loser+"/score"]  = (players[loser].score||0) - pot;
-    updates["players/"+winner+"/cards"] = [];
-    updates["players/"+loser+"/cards"]  = [];
-    updates["pot"]          = 0;
-    updates["currentBet"]   = 0;
-    updates["bettor"]       = null;
-    updates["pendingRaise"] = null;
-    updates["raiseBy"]      = null;
-    updates["phase"]        = "idle";
-    updates["revealed"]     = false;
-    updates["turn"]         = winner; // 다음 라운드는 승자부터
-    updates["deck"]         = shuffle(buildDeck()); // 덱 완전 재생성
+// 승자 선택 후 정산
+function finishRound(iWon){
+  db.ref("rooms/"+room).once("value").then(snap => {
+    const data    = snap.val();
+    const players = Object.keys(data.players);
+    const winner  = iWon ? player : players.find(p => p !== player);
+    awardPot(winner, data.pot||0);
+  });
+}
+
+// 정산 & 다음 라운드 초기화
+function awardPot(winner, amount){
+  db.ref("rooms/"+room).once("value").then(snap => {
+    const data    = snap.val();
+    const players = data.players;
+    const loser   = Object.keys(players).find(p => p !== winner);
+
+    const updates = {
+      // 점수
+      ["players/"+winner+"/score"]:   (players[winner].score||0) + amount,
+      ["players/"+loser+"/score"]:    (players[loser].score||0)  - amount,
+      // 카드 초기화
+      ["players/"+winner+"/cards"]:   [],
+      ["players/"+loser+"/cards"]:    [],
+      // hasDrawn 초기화 (다음 라운드에서 다시 뽑아야 함)
+      ["players/"+winner+"/hasDrawn"]: false,
+      ["players/"+loser+"/hasDrawn"]:  false,
+      // 방 상태 초기화
+      pot:          0,
+      currentBet:   0,
+      bettor:       null,
+      pendingRaise: 0,
+      raiseBy:      null,
+      revealed:     false,
+      phase:        "drawing",   // ← 다시 drawing으로
+      turn:         winner,      // 승자부터 뽑기
+      deck:         shuffle(buildDeck())
+    };
 
     db.ref("rooms/"+room).update(updates);
   });
 }
 
-// ---------- 렌더링 ----------
-
-function render(list, target, hide){
-  const el = document.getElementById(target);
+// ── 렌더링 ────────────────────────────────────────
+function renderCards(list, targetId, hide){
+  const el = document.getElementById(targetId);
   el.innerHTML = "";
-
-  list.forEach(c=>{
+  (list||[]).forEach(c => {
     const d = document.createElement("div");
     const isSpecial = String(c).endsWith(".");
-    d.className = "card " + (hide ? "hidden" : (isSpecial ? "special" : ""));
+    d.className = "card" + (hide ? " hidden" : (isSpecial ? " special" : ""));
     d.innerText = hide ? "?" : c;
     el.appendChild(d);
   });
 }
 
 function renderScores(players){
-  const board = document.getElementById("scoreBoard");
   let html = "";
-
   for(let p in players){
     const score = players[p].score || 0;
-    let cls = "zero";
-    let sign = "";
-    if(score > 0){ cls = "plus"; sign = "+"; }
+    let cls = "", sign = "";
+    if(score > 0){ cls = "plus";  sign = "+"; }
     else if(score < 0){ cls = "minus"; }
+    html += `<div class="score-card">
+      <div class="name">${p}${p===player?" (나)":""}</div>
+      <div class="amount ${cls}">${sign}${score.toLocaleString()}원</div>
+    </div>`;
+  }
+  document.getElementById("scoreBoard").innerHTML = html;
+}
 
-    html += `
-      <div class="score-card">
-        <div class="name">${p}${p===player ? " (나)" : ""}</div>
-        <div class="amount ${cls}">${sign}${score.toLocaleString()}원</div>
-      </div>
-    `;
+// UI 패널 전환
+function showUI(data){
+  const ids = ["ui-drawing","ui-bet-input","ui-respond","ui-raise-wait","ui-raise-ask","ui-result"];
+  ids.forEach(id => document.getElementById(id).style.display = "none");
+
+  const phase  = data.phase  || "drawing";
+  const bettor = data.bettor || null;
+
+  if(phase === "drawing"){
+    // 내 턴이고 아직 안 뽑았을 때만 버튼 노출
+    const myData    = (data.players||{})[player] || {};
+    const myTurn    = data.turn === player;
+    const notDrawn  = !myData.hasDrawn;
+    if(myTurn && notDrawn){
+      document.getElementById("ui-drawing").style.display = "block";
+    }
+
+  } else if(phase === "betting"){
+    if(!bettor){
+      // 아직 아무도 베팅 안 함 → 누구든 베팅 가능
+      document.getElementById("ui-bet-input").style.display = "block";
+    } else if(bettor === player){
+      // 내가 마지막 베팅 → 상대 반응 대기 (아무것도 안 보임)
+    } else {
+      // 상대가 베팅 → 콜/다이/레이즈
+      document.getElementById("ui-respond").style.display = "block";
+    }
+
+  } else if(phase === "raise_pending"){
+    if(data.raiseBy === player){
+      // 내가 레이즈 제안자 → 대기
+      document.getElementById("ui-raise-wait").style.display = "block";
+    } else {
+      // 상대가 레이즈 제안 → 동의/거절
+      document.getElementById("ui-raise-ask").style.display = "block";
+      document.getElementById("raiseAskText").innerText =
+        `상대가 ${(data.pendingRaise||0).toLocaleString()}원을 더 올리자고 합니다!`;
+    }
+
+  } else if(phase === "waiting_result"){
+    document.getElementById("ui-result").style.display = "block";
+  }
+}
+
+function updateStatus(data){
+  const phase = data.phase || "drawing";
+  let msg = "";
+
+  if(phase === "drawing"){
+    const myDrawn    = (data.players[player]||{}).hasDrawn;
+    const otherName  = Object.keys(data.players).find(p=>p!==player);
+    const otherDrawn = otherName && (data.players[otherName]||{}).hasDrawn;
+
+    if(myDrawn && !otherDrawn)      msg = "⏳ 상대방이 카드를 뽑는 중...";
+    else if(!myDrawn && otherDrawn) msg = "👉 내 차례입니다! 카드를 뽑으세요.";
+    else if(!myDrawn)               msg = data.turn===player ? "👉 먼저 카드를 뽑으세요!" : "⏳ 상대방이 먼저 뽑는 중...";
+    else                            msg = "✅ 둘 다 뽑음 → 베팅 시작!";
+  } else if(phase === "betting"){
+    if(!data.bettor)         msg = "💰 베팅하거나 상대가 베팅하길 기다리세요";
+    else if(data.bettor===player) msg = "⏳ 상대방의 반응을 기다리는 중...";
+    else                         msg = "👉 콜, 다이, 또는 레이즈를 선택하세요";
+  } else if(phase === "raise_pending"){
+    msg = data.raiseBy===player ? "⏳ 상대방의 레이즈 동의를 기다리는 중..." : "👉 레이즈에 동의하시겠습니까?";
+  } else if(phase === "waiting_result"){
+    msg = "🂠 카드 공개! 통화로 정하고 승자를 선택하세요";
   }
 
-  board.innerHTML = html;
+  document.getElementById("statusText").innerText = msg;
 }
 
-function shuffle(a){
-  return a.sort(()=>Math.random()-0.5);
-}
-
-// ---------- 실시간 리스너 ----------
-
+// ── 실시간 리스너 ──────────────────────────────────
 function listen(){
   const roomRef = db.ref("rooms/"+room);
 
-  roomRef.child("players").on("value", snap=>{
-    const players = snap.val();
-    if(!players) return;
-
-    let html="";
-    for(let p in players){
-      html += `<div class="box">${p} ✔</div>`;
-    }
-    if(Object.keys(players).length < 2){
-      html += `<div class="box" style="color:#aaa;">상대방 입장 대기 중...</div>`;
-    }
-    document.getElementById("players").innerHTML = html;
-
-    // 카드 공개 여부(revealed)에 따라 상대 카드도 보일지 결정
-    roomRef.child("revealed").once("value").then(revSnap=>{
-      const revealed = revSnap.val() === true;
-
-      for(let p in players){
-        if(p === player){
-          render(players[p].cards||[], "myCards", false);
-        } else {
-          render(players[p].cards||[], "enemyCards", !revealed);
-        }
-      }
-
-      document.getElementById("myRevealLabel").style.display = revealed ? "block" : "none";
-      document.getElementById("enemyRevealLabel").style.display = revealed ? "block" : "none";
-      if(revealed){
-        document.getElementById("myRevealLabel").innerText = "공개됨";
-        document.getElementById("enemyRevealLabel").innerText = "공개됨";
-      }
-    });
-
-    renderScores(players);
-  });
-
-  roomRef.child("started").on("value", snap=>{
+  roomRef.child("started").on("value", snap => {
     if(snap.val() === true){
       document.getElementById("lobby").style.display = "none";
-      document.getElementById("game").style.display = "block";
+      document.getElementById("game").style.display  = "block";
     }
   });
 
-  roomRef.child("turn").on("value", snap=>{
-    const t = snap.val();
-    if(!t) return;
-    document.getElementById("turnText").innerText =
-      (t === player) ? "👉 내 턴입니다! 카드를 뽑으세요." : "⏳ 상대방의 턴을 기다리는 중...";
-  });
+  // 방 전체를 한 번에 감시 (phase, turn, bettor, pot, revealed 등)
+  roomRef.on("value", snap => {
+    const data = snap.val();
+    if(!data || !data.started) return;
 
-  roomRef.child("pot").on("value", snap=>{
-    const pot = snap.val() || 0;
-    const potDisplay = document.getElementById("potDisplay");
+    const players  = data.players || {};
+    const revealed = data.revealed === true;
+
+    // 로비 플레이어 목록
+    let lobbyHtml = "";
+    for(let p in players) lobbyHtml += `<div class="box">${p} ✔</div>`;
+    if(Object.keys(players).length < 2)
+      lobbyHtml += `<div class="box" style="color:#aaa;">상대방 입장 대기 중...</div>`;
+    document.getElementById("lobbyPlayers").innerHTML = lobbyHtml;
+
+    // 카드 렌더링
+    for(let p in players){
+      if(p === player){
+        renderCards(players[p].cards, "myCards", false);
+      } else {
+        renderCards(players[p].cards, "enemyCards", !revealed);
+      }
+    }
+
+    // 공개 태그
+    document.getElementById("myTag").style.display    = revealed ? "block" : "none";
+    document.getElementById("enemyTag").style.display = revealed ? "block" : "none";
+
+    // 판돈
+    const pot = data.pot || 0;
+    const potBox = document.getElementById("potBox");
     if(pot > 0){
-      potDisplay.style.display = "block";
-      potDisplay.innerText = "💰 판돈: " + pot.toLocaleString() + "원";
+      potBox.style.display = "block";
+      potBox.innerText = "💰 판돈: " + pot.toLocaleString() + "원";
     } else {
-      potDisplay.style.display = "none";
+      potBox.style.display = "none";
     }
+
+    // 점수판
+    renderScores(players);
+
+    // 상태 메시지 & UI 패널
+    updateStatus(data);
+    showUI(data);
   });
-
-  roomRef.child("revealed").on("value", ()=>{
-    // 공개 여부가 바뀌면 카드도 다시 그려야 하므로 players를 다시 조회해서 갱신
-    roomRef.child("players").once("value").then(snap=>{
-      const players = snap.val();
-      if(!players) return;
-      roomRef.child("revealed").once("value").then(revSnap=>{
-        const revealed = revSnap.val() === true;
-        for(let p in players){
-          if(p === player){
-            render(players[p].cards||[], "myCards", false);
-          } else {
-            render(players[p].cards||[], "enemyCards", !revealed);
-          }
-        }
-        document.getElementById("myRevealLabel").style.display = revealed ? "block" : "none";
-        document.getElementById("enemyRevealLabel").style.display = revealed ? "block" : "none";
-        if(revealed){
-          document.getElementById("myRevealLabel").innerText = "공개됨";
-          document.getElementById("enemyRevealLabel").innerText = "공개됨";
-        }
-      });
-    });
-  });
-
-  roomRef.child("phase").on("value", snap=>{
-    updatePhaseUI(snap.val());
-  });
-
-  roomRef.child("bettor").on("value", ()=>{
-    roomRef.child("phase").once("value").then(s=>updatePhaseUI(s.val()));
-  });
-
-  // 레이즈 제안이 올라오거나 처리될 때 UI 갱신
-  roomRef.child("raiseBy").on("value", ()=>{
-    roomRef.child("phase").once("value").then(s=>updatePhaseUI(s.val()));
-  });
-}
-
-function updatePhaseUI(phase){
-  const drawArea   = document.getElementById("drawArea");
-  const betArea    = document.getElementById("betArea");
-  const actionArea = document.getElementById("actionArea");
-  const raiseArea  = document.getElementById("raiseArea");
-  const resultArea = document.getElementById("resultArea");
-
-  // 일단 전부 숨기고 필요한 것만 열기
-  drawArea.style.display   = "none";
-  betArea.style.display    = "none";
-  actionArea.style.display = "none";
-  raiseArea.style.display  = "none";
-  resultArea.style.display = "none";
-
-  if(!phase) phase = "idle";
-
-  if(phase === "idle"){
-    // 라운드 시작 전 - 카드 뽑기만 가능, 베팅 불가
-    drawArea.style.display = "block";
-
-  } else if(phase === "betting"){
-    db.ref("rooms/"+room+"/bettor").once("value").then(s=>{
-      const bettor = s.val();
-      if(bettor === player){
-        // 내가 마지막 베팅 -> 상대 반응 대기 (아무것도 안 보임)
-      } else {
-        // 상대가 베팅 -> 콜/다이/레이즈 가능, 카드 뽑기 불가
-        betArea.style.display    = "block";
-        actionArea.style.display = "block";
-      }
-    });
-
-  } else if(phase === "drawn"){
-    // 카드 뽑은 후 - 베팅만 가능, 카드 뽑기 불가
-    betArea.style.display = "block";
-
-  } else if(phase === "raise_pending"){
-    db.ref("rooms/"+room).once("value").then(snap=>{
-      const data = snap.val();
-      if(data.raiseBy === player){
-        // 내가 레이즈 제안자 -> 상대 동의 대기
-      } else {
-        raiseArea.style.display = "block";
-        document.getElementById("raiseText").innerText =
-          `상대가 ${(data.pendingRaise||0).toLocaleString()}원을 더 올리자고 합니다!`;
-      }
-    });
-
-  } else if(phase === "waiting_result"){
-    resultArea.style.display = "block";
-  }
 }
 </script>
-
 </body>
 </html>
