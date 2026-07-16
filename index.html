@@ -2,90 +2,293 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>온라인 섰다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; background:#0b0f1a; color:white; font-family:sans-serif; text-align:center; }
-  .container { padding:15px; max-width:480px; margin:0 auto; }
-
-  .card {
-    width:60px; height:90px; margin:5px;
-    border-radius:10px; display:flex;
-    align-items:center; justify-content:center;
-    background:white; color:black;
-    font-weight:bold; font-size:20px;
-    animation:pop 0.3s ease;
-  }
-  .card.special { border:3px solid #caa24a; }
-  .card.hidden { background:#333; color:#333; }
-  .cards { display:flex; justify-content:center; min-height:100px; flex-wrap:wrap; }
-
-  @keyframes pop {
-    from { transform:scale(0.5); opacity:0; }
-    to   { transform:scale(1);   opacity:1; }
+  :root{
+    --bg-0:#0f0b08;
+    --bg-1:#1c140f;
+    --bg-2:#241a13;
+    --gold:#c9a961;
+    --gold-bright:#e8cf8e;
+    --red:#a12f3f;
+    --red-bright:#c94a5a;
+    --jade:#3f6f56;
+    --jade-bright:#5c9a79;
+    --paper:#f4ecd8;
+    --paper-shadow:#d8c8a4;
+    --ink:#241a14;
+    --text:#ece3d2;
+    --text-dim:#a3937b;
+    --hairline:rgba(201,169,97,0.35);
   }
 
-  button {
-    width:90%; padding:15px; margin:5px;
-    border:none; border-radius:10px;
-    font-size:16px; cursor:pointer; font-weight:bold;
+  *{ box-sizing:border-box; }
+
+  html,body{ height:100%; }
+
+  body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(201,169,97,0.08), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(161,47,63,0.10), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(63,111,86,0.08), transparent 45%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 45%, var(--bg-0));
+    color:var(--text);
+    font-family:'Noto Sans KR', sans-serif;
+    text-align:center;
+    -webkit-tap-highlight-color:transparent;
   }
-  .btn-green  { background:#4CAF50; color:white; }
-  .btn-red    { background:#e53935; color:white; }
-  .btn-gray   { background:#424242; color:white; }
-  .btn-gold   { background:#caa24a; color:white; }
-  .btn-half   { width:43%; display:inline-block; margin:4px 1%; }
 
-  .box { background:#1c1f2b; padding:10px; margin:5px; border-radius:10px; }
+  .container{ padding:22px 16px 40px; max-width:440px; margin:0 auto; }
 
-  input[type="text"], input[type="number"] {
-    width:85%; padding:10px; margin-bottom:10px;
-    border-radius:8px; border:1px solid #333;
-    background:#1c1f2b; color:white; font-size:15px;
+  /* ── Header ───────────────────────────────── */
+  .brand{ margin:6px 0 22px; }
+  .brand h1{
+    font-family:'Song Myung', serif;
+    font-weight:400;
+    font-size:30px;
+    letter-spacing:2px;
+    margin:0;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .brand .sub{
+    font-size:11px;
+    letter-spacing:4px;
+    color:var(--text-dim);
+    margin-top:4px;
+    text-transform:uppercase;
+  }
+  .brand .rule{
+    width:60px; height:1px; margin:12px auto 0;
+    background:linear-gradient(90deg, transparent, var(--gold), transparent);
   }
 
-  .score-board { display:flex; justify-content:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
-  .score-card  { background:#1c1f2b; border-radius:10px; padding:10px 16px; min-width:110px; }
-  .score-card .name   { font-size:13px; color:#aaa; margin-bottom:4px; }
-  .score-card .amount { font-size:22px; font-weight:bold; }
-  .plus  { color:#4CAF50; }
-  .minus { color:#e53935; }
-
-  .pot-box {
-    background:#2a2410; border:1px solid #caa24a;
-    border-radius:10px; padding:10px; margin:10px 0;
-    font-size:18px; font-weight:bold; color:#f0d080;
+  /* ── Panels ───────────────────────────────── */
+  .box{
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--hairline);
+    border-radius:12px;
+    padding:20px 16px;
+    margin:10px 0;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
   }
-  .label { font-size:13px; color:#888; margin:14px 0 4px; }
-  .notice { color:#f0d080; font-size:15px; margin:8px 0; }
-  .tag { font-size:12px; color:#caa24a; margin-top:4px; }
+
+  .panel-title{
+    font-family:'Song Myung', serif;
+    font-size:16px;
+    color:var(--gold-bright);
+    letter-spacing:1px;
+    margin:0 0 14px;
+  }
+
+  input[type="text"], input[type="number"]{
+    width:100%;
+    padding:13px 14px;
+    margin-bottom:10px;
+    border-radius:8px;
+    border:1px solid rgba(201,169,97,0.25);
+    background:rgba(0,0,0,0.25);
+    color:var(--text);
+    font-size:15px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input::placeholder{ color:var(--text-dim); }
+  input:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(201,169,97,0.15);
+  }
+
+  hr.divider{
+    border:0; height:1px; margin:16px 0;
+    background:linear-gradient(90deg, transparent, var(--hairline), transparent);
+  }
+
+  /* ── Buttons ──────────────────────────────── */
+  button{
+    width:100%; padding:15px; margin:6px 0;
+    border:none; border-radius:9px;
+    font-size:15px; cursor:pointer; font-weight:700;
+    font-family:'Noto Sans KR', sans-serif;
+    letter-spacing:0.5px;
+    color:#fff;
+    position:relative;
+    transition:transform .08s ease, filter .15s ease, opacity .15s ease;
+    box-shadow:0 4px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  button:active{ transform:translateY(1px) scale(0.99); filter:brightness(0.94); }
+  button:disabled{ opacity:0.45; cursor:not-allowed; filter:grayscale(0.3); }
+
+  .btn-green{ background:linear-gradient(180deg, var(--jade-bright), var(--jade)); }
+  .btn-red{ background:linear-gradient(180deg, var(--red-bright), var(--red)); }
+  .btn-gray{ background:linear-gradient(180deg, #4a423a, #332c26); }
+  .btn-gold{ background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:var(--ink); text-shadow:none; }
+  .btn-half{ width:48%; display:inline-block; margin:4px 1%; vertical-align:top; }
+
+  /* ── Room code ────────────────────────────── */
+  #roomCode{
+    font-family:'Song Myung', serif;
+    font-size:16px;
+    color:var(--gold-bright);
+    letter-spacing:2px;
+    margin:14px 0;
+  }
+
+  /* ── Lobby ────────────────────────────────── */
+  .player-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(0,0,0,0.2);
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    padding:11px 14px; margin:6px 0;
+    font-size:14px;
+  }
+  .player-row .dot{ color:var(--jade-bright); font-size:16px; }
+  .player-row.waiting{ color:var(--text-dim); font-style:italic; }
+  .player-row.waiting .dot{ color:var(--text-dim); }
+
+  /* ── Score board ──────────────────────────── */
+  .label{
+    font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--text-dim); margin:18px 0 8px;
+  }
+  .score-board{ display:flex; justify-content:center; gap:10px; margin:8px 0; flex-wrap:wrap; }
+  .score-card{
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--hairline);
+    border-top:2px solid var(--gold);
+    border-radius:10px; padding:11px 18px; min-width:120px;
+  }
+  .score-card .name{ font-size:12px; color:var(--text-dim); margin-bottom:5px; }
+  .score-card .amount{ font-size:21px; font-weight:900; font-family:'Song Myung', serif; }
+  .plus{ color:var(--jade-bright); }
+  .minus{ color:var(--red-bright); }
+
+  /* ── Pot ──────────────────────────────────── */
+  .pot-box{
+    background:linear-gradient(180deg, rgba(201,169,97,0.14), rgba(201,169,97,0.05));
+    border:1px solid var(--gold);
+    border-radius:10px; padding:12px; margin:14px 0;
+    font-size:17px; font-weight:700; color:var(--gold-bright);
+    font-family:'Song Myung', serif; letter-spacing:1px;
+    animation:potPulse .4s ease;
+  }
+  @keyframes potPulse{ from{ transform:scale(0.96); opacity:0.4; } to{ transform:scale(1); opacity:1; } }
+
+  #statusText{
+    font-size:14px; color:var(--text-dim);
+    min-height:20px; margin:6px 0 14px;
+  }
+
+  /* ── Cards ────────────────────────────────── */
+  .cards{ display:flex; justify-content:center; min-height:104px; gap:10px; flex-wrap:wrap; perspective:600px; }
+
+  .card{
+    width:64px; height:96px;
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(155deg, var(--paper), var(--paper-shadow));
+    color:var(--ink);
+    font-weight:700; font-size:22px;
+    font-family:'Song Myung', serif;
+    border:1px solid rgba(0,0,0,0.15);
+    box-shadow:0 6px 14px rgba(0,0,0,0.35);
+    position:relative;
+    animation:dealIn .35s cubic-bezier(.2,.7,.3,1);
+  }
+  .card.special{
+    box-shadow:0 6px 14px rgba(0,0,0,0.35), 0 0 0 2px var(--gold) inset;
+  }
+  .card.special::after{
+    content:"특";
+    position:absolute; top:3px; right:5px;
+    font-size:9px; color:var(--gold);
+    font-family:'Noto Sans KR', sans-serif; font-weight:700;
+  }
+  .card.hidden{
+    background:
+      repeating-linear-gradient(45deg, rgba(201,169,97,0.18) 0 2px, transparent 2px 10px),
+      linear-gradient(160deg, var(--red-bright), var(--red) 60%, #6f1f2a);
+    color:transparent;
+    border:1px solid rgba(201,169,97,0.4);
+  }
+  .card.hidden::before{
+    content:"";
+    width:26px; height:26px;
+    border:1.5px solid var(--gold);
+    transform:rotate(45deg);
+    box-shadow:0 0 0 5px rgba(0,0,0,0) ;
+  }
+
+  @keyframes dealIn{
+    from{ transform:translateY(-14px) rotate(-4deg) scale(0.85); opacity:0; }
+    to{ transform:translateY(0) rotate(0) scale(1); opacity:1; }
+  }
+
+  .tag{
+    font-size:11px; color:var(--gold-bright); margin-top:6px;
+    letter-spacing:2px; text-transform:uppercase;
+  }
+
+  .notice{
+    color:var(--gold-bright); font-size:14.5px; margin:8px 0 14px;
+    line-height:1.5;
+  }
+
+  /* ── Misc ─────────────────────────────────── */
+  .error-banner{
+    background:linear-gradient(180deg, rgba(161,47,63,0.25), rgba(161,47,63,0.1));
+    border:1px solid var(--red-bright);
+    color:#ffd9dd;
+    border-radius:10px;
+    padding:14px; margin:10px 0;
+    font-size:13.5px; line-height:1.6; text-align:left;
+    display:none;
+  }
+
+  ::selection{ background:var(--gold); color:var(--ink); }
 </style>
 </head>
 <body>
 <div class="container">
 
-<h2>🃏 온라인 섰다</h2>
+<div class="brand">
+  <h1>온라인 섰다</h1>
+  <div class="sub">HWATU · SEOTDA</div>
+  <div class="rule"></div>
+</div>
+
+<div id="errorBanner" class="error-banner"></div>
 
 <!-- 로그인 -->
 <div id="authBox" class="box">
-  <input id="name" type="text" placeholder="닉네임"><br>
+  <div class="panel-title">입장</div>
+  <input id="name" type="text" placeholder="닉네임">
   <button class="btn-green" onclick="createRoom()">방 만들기</button>
-  <hr style="border:0.5px solid #333; margin:15px 0;">
-  <input id="roomInput" type="text" placeholder="방 코드 4자리"><br>
+  <hr class="divider">
+  <input id="roomInput" type="text" placeholder="방 코드 4자리">
   <button class="btn-gray" onclick="joinRoom()">방 입장하기</button>
 </div>
 
 <h3 id="roomCode"></h3>
 
 <!-- 로비 -->
-<div id="lobby" style="display:none;">
-  <h3>👥 참여 플레이어</h3>
+<div id="lobby" class="box" style="display:none;">
+  <div class="panel-title">참여 플레이어</div>
   <div id="lobbyPlayers"></div>
   <br>
-  <button class="btn-green" onclick="startGame()">게임 시작</button>
+  <button class="btn-green" id="startBtn" onclick="startGame()">게임 시작</button>
 </div>
 
 <!-- 게임 -->
@@ -95,7 +298,7 @@
   <div class="score-board" id="scoreBoard"></div>
 
   <div id="potBox" class="pot-box" style="display:none;"></div>
-  <p id="statusText" style="font-size:15px; color:#aaa;"></p>
+  <p id="statusText"></p>
 
   <!-- 카드 뽑기 -->
   <div id="ui-drawing" style="display:none;">
@@ -112,22 +315,21 @@
   <div id="enemyTag" class="tag" style="display:none;">공개됨</div>
 
   <!-- 베팅 입력 -->
-  <div id="ui-bet-input" style="display:none;">
-    <div class="label">베팅</div>
+  <div id="ui-bet-input" class="box" style="display:none;">
+    <div class="panel-title">베팅</div>
     <input id="betInput" type="number" placeholder="금액 입력" min="1">
-    <br>
     <button class="btn-gold" onclick="placeBet()">베팅하기</button>
   </div>
 
   <!-- 상대 베팅에 대한 반응: 콜/다이, + 추가 레이즈 -->
-  <div id="ui-respond" style="display:none;">
-    <div class="label">베팅</div>
-    <input id="raiseInput" type="number" placeholder="레이즈 금액 입력" min="1">
-    <br>
-    <button class="btn-gold" style="width:90%;" onclick="requestRaise()">레이즈 요청</button>
-    <br>
-    <button class="btn-green btn-half" onclick="call()">콜</button>
-    <button class="btn-red   btn-half" onclick="die()">다이</button>
+  <div id="ui-respond" class="box" style="display:none;">
+    <div class="panel-title">베팅</div>
+    <input id="raiseInput" type="number" placeholder="레이즈 후 총 베팅 금액" min="1">
+    <button class="btn-gold" onclick="requestRaise()">레이즈 요청</button>
+    <div>
+      <button class="btn-green btn-half" onclick="call()">콜</button>
+      <button class="btn-red btn-half" onclick="die()">다이</button>
+    </div>
   </div>
 
   <!-- 레이즈 동의 대기 -->
@@ -138,21 +340,42 @@
   <!-- 레이즈 동의 요청 -->
   <div id="ui-raise-ask" style="display:none;">
     <p id="raiseAskText" class="notice"></p>
-    <button class="btn-green btn-half" onclick="acceptRaise()">동의 (올리기)</button>
-    <button class="btn-red   btn-half" onclick="rejectRaise()">거절 (다이)</button>
+    <div>
+      <button class="btn-green btn-half" onclick="acceptRaise()">동의 (올리기)</button>
+      <button class="btn-red btn-half" onclick="rejectRaise()">거절 (다이)</button>
+    </div>
   </div>
 
   <!-- 승자 선택 -->
   <div id="ui-result" style="display:none;">
     <p class="notice">카드가 공개됐습니다. 승자를 선택하세요</p>
     <button class="btn-green" onclick="finishRound(true)">내가 이겼다</button>
-    <button class="btn-gray"  onclick="finishRound(false)">상대가 이겼다</button>
+    <button class="btn-gray" onclick="finishRound(false)">상대가 이겼다</button>
   </div>
 
 </div>
 </div>
 
 <script>
+// ── 에러 표시 헬퍼 ────────────────────────────────
+// 기존 코드는 Firebase 호출이 실패해도 아무 반응이 없어서
+// "버튼을 눌러도 시작이 안 된다"처럼 보이는 문제가 있었음.
+// 모든 firebase 호출에 .catch를 달아 실패 시 반드시 사용자에게 알려준다.
+function showError(msg){
+  const el = document.getElementById("errorBanner");
+  el.style.display = "block";
+  el.innerText = "⚠ " + msg;
+}
+function clearError(){
+  const el = document.getElementById("errorBanner");
+  el.style.display = "none";
+  el.innerText = "";
+}
+
+if(typeof firebase === "undefined"){
+  showError("Firebase 라이브러리를 불러오지 못했습니다. 네트워크(방화벽/광고차단 확장)를 확인한 뒤 새로고침 해주세요.");
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyDfTOFchRqnH1ifrwgJ-F--qdzRGecs0Q8",
   authDomain: "bacarat-5e575.firebaseapp.com",
@@ -162,8 +385,14 @@ const firebaseConfig = {
   messagingSenderId: "805374159280",
   appId: "1:805374159280:web:7b4d1bd628b29341ee4e75"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+
+let db = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+}catch(err){
+  showError("Firebase 초기화 실패: " + err.message);
+}
 
 let player = "";
 let room   = "";
@@ -177,35 +406,64 @@ function buildDeck(){
   }
   return deck;
 }
-function shuffle(a){ return a.sort(() => Math.random() - 0.5); }
+// Fisher-Yates: 기존 sort(() => Math.random()-0.5) 방식은 셔플이 고르게 섞이지 않는
+// 편향이 있어서 더 정확한 방식으로 교체.
+function shuffle(a){
+  const arr = a.slice();
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 // ── 방 생성/입장 ─────────────────────────────────
-function createRoom(){
+async function createRoom(){
+  clearError();
   player = document.getElementById("name").value.trim();
   if(!player) return alert("닉네임을 입력해주세요.");
   room = Math.random().toString(36).substring(2,6).toUpperCase();
-  db.ref("rooms/"+room).set(freshRoomState()).then(joinCore);
+  try{
+    await db.ref("rooms/"+room).set(freshRoomState());
+    await joinCore();
+  }catch(err){
+    showError("방 생성 실패: " + err.message);
+  }
 }
 
-function joinRoom(){
-  player    = document.getElementById("name").value.trim();
-  room      = document.getElementById("roomInput").value.trim().toUpperCase();
+async function joinRoom(){
+  clearError();
+  player = document.getElementById("name").value.trim();
+  room   = document.getElementById("roomInput").value.trim().toUpperCase();
   if(!player) return alert("닉네임을 입력해주세요.");
   if(!room)   return alert("방 코드를 입력해주세요.");
-  db.ref("rooms/"+room).once("value").then(snap => {
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     if(!snap.exists()) return alert("존재하지 않는 방 코드입니다.");
-    joinCore();
-  });
+    await joinCore();
+  }catch(err){
+    showError("방 입장 실패: " + err.message);
+  }
 }
 
-function joinCore(){
-  const ref = db.ref("rooms/"+room+"/players/"+player);
-  ref.set({ cards:[], score:0, hasDrawn:false });
-  ref.onDisconnect().remove();
-  document.getElementById("authBox").style.display  = "none";
-  document.getElementById("roomCode").innerText     = "방 코드: " + room;
-  document.getElementById("lobby").style.display    = "block";
-  listen();
+async function joinCore(){
+  try{
+    const playerRef = db.ref("rooms/"+room+"/players/"+player);
+    // 같은 닉네임이 이미 방에 있으면 덮어써서 인원수가 꼬이는 문제를 방지
+    const existing = await playerRef.once("value");
+    if(existing.exists()){
+      alert("이미 사용 중인 닉네임입니다. 다른 닉네임으로 입장해주세요.");
+      return;
+    }
+    await playerRef.set({ cards:[], score:0, hasDrawn:false });
+    playerRef.onDisconnect().remove();
+    document.getElementById("authBox").style.display = "none";
+    document.getElementById("roomCode").innerText     = "방 코드: " + room;
+    document.getElementById("lobby").style.display    = "block";
+    listen();
+  }catch(err){
+    showError("입장 처리 중 오류: " + err.message);
+  }
 }
 
 // 방 초기 상태
@@ -221,231 +479,279 @@ function freshRoomState(){
     bettor: null,
     pendingRaise: 0,
     raiseBy: null,
-    revealed: false
+    revealed: false,
+    contrib: {}   // 이번 판에 각 플레이어가 실제로 pot에 넣은 누적 금액
   };
 }
 
 // ── 게임 시작 ─────────────────────────────────────
-function startGame(){
-  db.ref("rooms/"+room+"/players").once("value").then(s => {
-    if(s.numChildren() < 2) return alert("최소 2명이 필요합니다.");
-    const first = Object.keys(s.val())[0];
-    db.ref("rooms/"+room).update({
+async function startGame(){
+  clearError();
+  const btn = document.getElementById("startBtn");
+  btn.disabled = true;
+  try{
+    const s = await db.ref("rooms/"+room+"/players").once("value");
+    if(!s.exists() || s.numChildren() < 2){
+      alert("최소 2명이 필요합니다.");
+      return;
+    }
+    const playersVal = s.val();
+    const first = Object.keys(playersVal)[0];
+
+    await db.ref("rooms/"+room).update({
       started: true,
       turn: first,
       phase: "drawing",
       pot: 0, currentBet: 0,
       bettor: null, pendingRaise: 0, raiseBy: null,
       revealed: false,
+      contrib: {},
       deck: shuffle(buildDeck())
     });
-    // 모든 플레이어 hasDrawn 초기화
-    for(let p in s.val()){
-      db.ref("rooms/"+room+"/players/"+p+"/hasDrawn").set(false);
+
+    // 모든 플레이어 hasDrawn / cards 초기화
+    const resetUpdates = {};
+    for(let p in playersVal){
+      resetUpdates["players/"+p+"/hasDrawn"] = false;
+      resetUpdates["players/"+p+"/cards"]    = [];
     }
-  });
+    await db.ref("rooms/"+room).update(resetUpdates);
+  }catch(err){
+    showError("게임 시작 실패: " + err.message + " (Firebase 규칙/네트워크를 확인해보세요)");
+  }finally{
+    btn.disabled = false;
+  }
 }
 
 // ── 카드 뽑기 ─────────────────────────────────────
 // 조건: phase===drawing & 내 turn & 아직 안 뽑음(hasDrawn===false)
-function draw(){
+async function draw(){
+  clearError();
   const roomRef = db.ref("rooms/"+room);
-
-  roomRef.once("value").then(snap => {
+  try{
+    const snap = await roomRef.once("value");
     const data = snap.val();
-    if(data.phase !== "drawing"){
-      return alert("지금은 카드를 뽑을 수 없습니다.");
-    }
-    if(data.turn !== player){
-      return alert("내 턴이 아닙니다.");
-    }
-    if(data.players[player].hasDrawn){
-      return alert("이미 뽑았습니다.");
-    }
+    if(!data) return showError("방 정보를 불러오지 못했습니다.");
+    if(data.phase !== "drawing")   return alert("지금은 카드를 뽑을 수 없습니다.");
+    if(data.turn !== player)       return alert("내 턴이 아닙니다.");
+    if((data.players[player]||{}).hasDrawn) return alert("이미 뽑았습니다.");
 
     const deckRef    = db.ref("rooms/"+room+"/deck");
     const myCardsRef = db.ref("rooms/"+room+"/players/"+player+"/cards");
     const heldCards  = data.players[player].cards || [];
 
     // 1) 들고 있던 카드 반납 + 셔플
-    deckRef.transaction(
-      deck => shuffle([...(deck||[]), ...heldCards]),
-      (err, committed) => {
-        if(err || !committed) return console.error("반납 실패", err);
+    const step1 = await deckRef.transaction(deck => shuffle([...(deck||[]), ...heldCards]));
+    if(!step1.committed) return showError("덱 반납 실패, 다시 시도해주세요.");
 
-        // 2) 새 카드 2장 뽑기
-        let drawn = null;
-        deckRef.transaction(
-          deck => {
-            if(!deck || deck.length < 2) return deck;
-            const copy = deck.slice();
-            drawn = copy.splice(0, 2);
-            return copy;
-          },
-          (err2, committed2) => {
-            if(err2 || !committed2 || !drawn) return alert("덱 카드 부족");
+    // 2) 새 카드 2장 뽑기
+    let drawn = null;
+    const step2 = await deckRef.transaction(deck => {
+      if(!deck || deck.length < 2) return deck;
+      const copy = deck.slice();
+      drawn = copy.splice(0, 2);
+      return copy;
+    });
+    if(!step2.committed || !drawn) return showError("덱에 카드가 부족합니다.");
 
-            // 3) 카드 지급 & hasDrawn = true
-            myCardsRef.set(drawn);
-            db.ref("rooms/"+room+"/players/"+player+"/hasDrawn").set(true);
+    // 3) 카드 지급 & hasDrawn = true
+    await myCardsRef.set(drawn);
+    await db.ref("rooms/"+room+"/players/"+player+"/hasDrawn").set(true);
 
-            // 4) 상대방도 뽑았는지 확인
-            const players    = data.players;
-            const otherName  = Object.keys(players).find(p => p !== player);
-            const otherDrawn = players[otherName] && players[otherName].hasDrawn;
+    // 4) 상대방도 뽑았는지 확인
+    const players    = data.players;
+    const otherName  = Object.keys(players).find(p => p !== player);
+    const otherDrawn = players[otherName] && players[otherName].hasDrawn;
 
-            if(otherDrawn){
-              // 둘 다 뽑음 → 베팅 단계로
-              db.ref("rooms/"+room).update({
-                phase: "betting",
-                bettor: null,
-                currentBet: 0
-              });
-            } else {
-              // 상대 차례로 넘기기
-              db.ref("rooms/"+room+"/turn").set(otherName);
-            }
-          }
-        );
-      }
-    );
-  });
+    if(otherDrawn){
+      await db.ref("rooms/"+room).update({ phase: "betting", bettor: null, currentBet: 0 });
+    } else if(otherName){
+      await db.ref("rooms/"+room+"/turn").set(otherName);
+    }
+  }catch(err){
+    showError("카드 뽑기 실패: " + err.message);
+  }
 }
 
 // ── 베팅 ─────────────────────────────────────────
-// phase===betting, bettor===null 또는 내가 bettor가 아닐 때 첫 베팅/레이즈 가능
-function placeBet(){
+async function placeBet(){
+  clearError();
   const amount = parseInt(document.getElementById("betInput").value, 10);
   if(!amount || amount <= 0) return alert("금액을 입력해주세요.");
   document.getElementById("betInput").value = "";
-
-  db.ref("rooms/"+room).once("value").then(snap => {
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "betting") return alert("지금은 베팅할 수 없습니다.");
-
-    db.ref("rooms/"+room).update({
+    await db.ref("rooms/"+room).update({
       pot: (data.pot||0) + amount,
       currentBet: amount,
-      bettor: player
+      bettor: player,
+      ["contrib/"+player]: amount
     });
-  });
+  }catch(err){
+    showError("베팅 실패: " + err.message);
+  }
 }
 
 // 레이즈 요청 (상대 동의 필요)
-function requestRaise(){
+async function requestRaise(){
+  clearError();
   const amount = parseInt(document.getElementById("raiseInput").value, 10);
   if(!amount || amount <= 0) return alert("레이즈 금액을 입력해주세요.");
   document.getElementById("raiseInput").value = "";
-
-  db.ref("rooms/"+room).once("value").then(snap => {
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "betting") return alert("지금은 레이즈할 수 없습니다.");
     if(data.bettor === player) return alert("자신의 베팅에 레이즈할 수 없습니다.");
-
-    db.ref("rooms/"+room).update({
+    if(amount <= (data.currentBet||0)){
+      return alert(`레이즈 금액은 현재 베팅(${(data.currentBet||0).toLocaleString()}원)보다 커야 합니다.`);
+    }
+    await db.ref("rooms/"+room).update({
       phase: "raise_pending",
       pendingRaise: amount,
       raiseBy: player
     });
-  });
+  }catch(err){
+    showError("레이즈 요청 실패: " + err.message);
+  }
 }
 
 // 레이즈 동의
-function acceptRaise(){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function acceptRaise(){
+  clearError();
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "raise_pending") return;
     if(data.raiseBy === player) return alert("자신의 레이즈에 동의할 수 없습니다.");
 
-    db.ref("rooms/"+room).update({
-      pot: (data.pot||0) + (data.pendingRaise||0),
+    // 레이즈한 사람이 "이번 판에 이미 넣은 돈"을 빼고, 목표 금액(pendingRaise)까지
+    // 부족한 만큼만 pot에 추가한다. (이미 낸 돈을 또 더하는 중복 계산 방지)
+    const contrib = data.contrib || {};
+    const raiserPaid = contrib[data.raiseBy] || 0;
+    const needed = Math.max(0, (data.pendingRaise||0) - raiserPaid);
+
+    await db.ref("rooms/"+room).update({
+      pot: (data.pot||0) + needed,
       currentBet: data.pendingRaise,
       bettor: data.raiseBy,
       pendingRaise: 0,
       raiseBy: null,
-      phase: "betting"
+      phase: "betting",
+      ["contrib/"+data.raiseBy]: raiserPaid + needed
     });
-  });
+  }catch(err){
+    showError("레이즈 동의 실패: " + err.message);
+  }
 }
 
 // 레이즈 거절 → 거절한 사람이 다이, 레이즈 제안자가 currentBet만큼 가져감
-function rejectRaise(){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function rejectRaise(){
+  clearError();
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "raise_pending") return;
     if(data.raiseBy === player) return alert("자신의 레이즈를 거절할 수 없습니다.");
-    awardPot(data.raiseBy, data.currentBet||0);
-  });
+    // 레이즈 제안은 아직 pot에 반영되지 않은 상태이므로, 지금까지 실제로 쌓인 pot 전체를
+    // 레이즈 제안자에게 지급한다 (기존엔 currentBet만 지급되어 일부 금액이 사라졌었음)
+    await awardPot(data.raiseBy, data.pot||0);
+  }catch(err){
+    showError("레이즈 거절 실패: " + err.message);
+  }
 }
 
 // 콜 → pot에 currentBet 추가, 카드 공개, 승자 선택
-function call(){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function call(){
+  clearError();
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "betting") return alert("지금은 콜할 수 없습니다.");
     if(!data.bettor) return alert("아직 베팅이 없습니다.");
     if(data.bettor === player) return alert("자신의 베팅에 콜할 수 없습니다.");
 
-    db.ref("rooms/"+room).update({
-      pot: (data.pot||0) + (data.currentBet||0),
+    // 내가 이번 판에 이미 넣은 돈(예: 첫 베팅 후 상대가 레이즈한 경우)을 빼고
+    // 현재 베팅 금액을 맞추는 데 부족한 만큼만 pot에 추가한다.
+    const contrib  = data.contrib || {};
+    const myPaid   = contrib[player] || 0;
+    const needed   = Math.max(0, (data.currentBet||0) - myPaid);
+
+    await db.ref("rooms/"+room).update({
+      pot: (data.pot||0) + needed,
       phase: "waiting_result",
-      revealed: true
+      revealed: true,
+      ["contrib/"+player]: myPaid + needed
     });
-  });
+  }catch(err){
+    showError("콜 실패: " + err.message);
+  }
 }
 
 // 다이 → 베팅한 사람이 currentBet만큼 가져감
-function die(){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function die(){
+  clearError();
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data = snap.val();
     if(data.phase !== "betting") return alert("지금은 다이할 수 없습니다.");
     if(!data.bettor) return alert("아직 베팅이 없습니다.");
     if(data.bettor === player) return alert("자신의 베팅에 다이할 수 없습니다.");
-    awardPot(data.bettor, data.currentBet||0);
-  });
+    // 지금까지 실제로 쌓인 pot 전체를 지급 (기존엔 currentBet만 지급되어
+    // 레이즈로 쌓인 금액 일부가 그냥 사라졌었음)
+    await awardPot(data.bettor, data.pot||0);
+  }catch(err){
+    showError("다이 실패: " + err.message);
+  }
 }
 
 // 승자 선택 후 정산
-function finishRound(iWon){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function finishRound(iWon){
+  clearError();
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data    = snap.val();
     const players = Object.keys(data.players);
     const winner  = iWon ? player : players.find(p => p !== player);
-    awardPot(winner, data.pot||0);
-  });
+    await awardPot(winner, data.pot||0);
+  }catch(err){
+    showError("정산 실패: " + err.message);
+  }
 }
 
 // 정산 & 다음 라운드 초기화
-function awardPot(winner, amount){
-  db.ref("rooms/"+room).once("value").then(snap => {
+async function awardPot(winner, amount){
+  try{
+    const snap = await db.ref("rooms/"+room).once("value");
     const data    = snap.val();
     const players = data.players;
     const loser   = Object.keys(players).find(p => p !== winner);
 
     const updates = {
-      // 점수
       ["players/"+winner+"/score"]:   (players[winner].score||0) + amount,
       ["players/"+loser+"/score"]:    (players[loser].score||0)  - amount,
-      // 카드 초기화
       ["players/"+winner+"/cards"]:   [],
       ["players/"+loser+"/cards"]:    [],
-      // hasDrawn 초기화 (다음 라운드에서 다시 뽑아야 함)
       ["players/"+winner+"/hasDrawn"]: false,
       ["players/"+loser+"/hasDrawn"]:  false,
-      // 방 상태 초기화
       pot:          0,
       currentBet:   0,
       bettor:       null,
       pendingRaise: 0,
       raiseBy:      null,
       revealed:     false,
-      phase:        "drawing",   // ← 다시 drawing으로
-      turn:         winner,      // 승자부터 뽑기
+      contrib:      {},
+      phase:        "drawing",
+      turn:         winner,
       deck:         shuffle(buildDeck())
     };
 
-    db.ref("rooms/"+room).update(updates);
-  });
+    await db.ref("rooms/"+room).update(updates);
+  }catch(err){
+    showError("정산 처리 실패: " + err.message);
+  }
 }
 
 // ── 렌더링 ────────────────────────────────────────
@@ -456,7 +762,7 @@ function renderCards(list, targetId, hide){
     const d = document.createElement("div");
     const isSpecial = String(c).endsWith(".");
     d.className = "card" + (hide ? " hidden" : (isSpecial ? " special" : ""));
-    d.innerText = hide ? "?" : c;
+    d.innerText = hide ? "" : c;
     el.appendChild(d);
   });
 }
@@ -485,7 +791,6 @@ function showUI(data){
   const bettor = data.bettor || null;
 
   if(phase === "drawing"){
-    // 내 턴이고 아직 안 뽑았을 때만 버튼 노출
     const myData    = (data.players||{})[player] || {};
     const myTurn    = data.turn === player;
     const notDrawn  = !myData.hasDrawn;
@@ -495,21 +800,17 @@ function showUI(data){
 
   } else if(phase === "betting"){
     if(!bettor){
-      // 아직 아무도 베팅 안 함 → 누구든 베팅 가능
       document.getElementById("ui-bet-input").style.display = "block";
     } else if(bettor === player){
-      // 내가 마지막 베팅 → 상대 반응 대기 (아무것도 안 보임)
+      // 상대 반응 대기
     } else {
-      // 상대가 베팅 → 콜/다이/레이즈
       document.getElementById("ui-respond").style.display = "block";
     }
 
   } else if(phase === "raise_pending"){
     if(data.raiseBy === player){
-      // 내가 레이즈 제안자 → 대기
       document.getElementById("ui-raise-wait").style.display = "block";
     } else {
-      // 상대가 레이즈 제안 → 동의/거절
       document.getElementById("ui-raise-ask").style.display = "block";
       document.getElementById("raiseAskText").innerText =
         `상대가 ${(data.pendingRaise||0).toLocaleString()}원을 더 올리자고 합니다!`;
@@ -534,9 +835,9 @@ function updateStatus(data){
     else if(!myDrawn)               msg = data.turn===player ? "👉 먼저 카드를 뽑으세요!" : "⏳ 상대방이 먼저 뽑는 중...";
     else                            msg = "✅ 둘 다 뽑음 → 베팅 시작!";
   } else if(phase === "betting"){
-    if(!data.bettor)         msg = "💰 베팅하거나 상대가 베팅하길 기다리세요";
+    if(!data.bettor)              msg = "💰 베팅하거나 상대가 베팅하길 기다리세요";
     else if(data.bettor===player) msg = "⏳ 상대방의 반응을 기다리는 중...";
-    else                         msg = "👉 콜, 다이, 또는 레이즈를 선택하세요";
+    else                          msg = "👉 콜, 다이, 또는 레이즈를 선택하세요";
   } else if(phase === "raise_pending"){
     msg = data.raiseBy===player ? "⏳ 상대방의 레이즈 동의를 기다리는 중..." : "👉 레이즈에 동의하시겠습니까?";
   } else if(phase === "waiting_result"){
@@ -555,22 +856,23 @@ function listen(){
       document.getElementById("lobby").style.display = "none";
       document.getElementById("game").style.display  = "block";
     }
-  });
+  }, err => showError("연결 오류: " + err.message));
 
-  // 방 전체를 한 번에 감시 (phase, turn, bettor, pot, revealed 등)
   roomRef.on("value", snap => {
     const data = snap.val();
-    if(!data || !data.started) return;
+    if(!data) return;
 
     const players  = data.players || {};
     const revealed = data.revealed === true;
 
     // 로비 플레이어 목록
     let lobbyHtml = "";
-    for(let p in players) lobbyHtml += `<div class="box">${p} ✔</div>`;
+    for(let p in players) lobbyHtml += `<div class="player-row"><span>${p}</span><span class="dot">●</span></div>`;
     if(Object.keys(players).length < 2)
-      lobbyHtml += `<div class="box" style="color:#aaa;">상대방 입장 대기 중...</div>`;
+      lobbyHtml += `<div class="player-row waiting"><span>상대방 입장 대기 중...</span></div>`;
     document.getElementById("lobbyPlayers").innerHTML = lobbyHtml;
+
+    if(!data.started) return;
 
     // 카드 렌더링
     for(let p in players){
@@ -581,11 +883,9 @@ function listen(){
       }
     }
 
-    // 공개 태그
     document.getElementById("myTag").style.display    = revealed ? "block" : "none";
     document.getElementById("enemyTag").style.display = revealed ? "block" : "none";
 
-    // 판돈
     const pot = data.pot || 0;
     const potBox = document.getElementById("potBox");
     if(pot > 0){
@@ -595,13 +895,10 @@ function listen(){
       potBox.style.display = "none";
     }
 
-    // 점수판
     renderScores(players);
-
-    // 상태 메시지 & UI 패널
     updateStatus(data);
     showUI(data);
-  });
+  }, err => showError("실시간 연결 오류: " + err.message));
 }
 </script>
 </body>
