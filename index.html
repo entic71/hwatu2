@@ -287,7 +287,7 @@ async function rejectRaise(){
     const data = snap.val();
     if(data.phase !== "raise_pending") return;
     if(data.raiseBy === player) return alert("자신의 레이즈를 거절할 수 없습니다.");
-    await awardPot(data.raiseBy, data.pot||0);
+    await awardPot(data.raiseBy);
   }catch(err){
     showError("레이즈 거절 실패: " + err.message);
   }
@@ -318,7 +318,7 @@ async function die(){
     if(data.phase !== "betting") return alert("지금은 다이할 수 없습니다.");
     if(!data.bettor) return alert("아직 베팅이 없습니다.");
     if(data.bettor === player) return alert("자신의 베팅에 다이할 수 없습니다.");
-    await awardPot(data.bettor, data.pot||0);
+    await awardPot(data.bettor);
   }catch(err){
     showError("다이 실패: " + err.message);
   }
@@ -330,17 +330,22 @@ async function finishRound(iWon){
     const data    = snap.val();
     const players = Object.keys(data.players);
     const winner  = iWon ? player : players.find(p => p !== player);
-    await awardPot(winner, data.pot||0);
+    await awardPot(winner);
   }catch(err){
     showError("정산 실패: " + err.message);
   }
 }
-async function awardPot(winner, amount){
+// 승자에게 pot 전체를 주되, 점수(score)에는 "패자가 실제로 낸 돈"만큼만 반영한다.
+// (승자가 자기 돈을 돌려받는 건 순이익이 아니고, 패자 입장에서도 자기가 안 낸
+//  상대방의 레이즈 금액까지 잃는 건 아니어야 하기 때문)
+async function awardPot(winner){
   try{
     const snap = await db.ref("rooms/"+room).once("value");
     const data    = snap.val();
     const players = data.players;
     const loser   = Object.keys(players).find(p => p !== winner);
+    const contrib = data.contrib || {};
+    const transfer = contrib[loser] || 0; // 패자가 이번 판에 실제로 낸 돈
     // 다음 라운드도 기본 판돈 100원(각 50원)을 깔고 시작한다
     const updates = {
       pot:          100,
@@ -354,8 +359,8 @@ async function awardPot(winner, amount){
       turn:         winner,
       deck:         shuffle(buildDeck())
     };
-    updates["players/"+winner+"/score"]    = (players[winner].score||0) + amount;
-    updates["players/"+loser+"/score"]     = (players[loser].score||0)  - amount;
+    updates["players/"+winner+"/score"]    = (players[winner].score||0) + transfer;
+    updates["players/"+loser+"/score"]     = (players[loser].score||0)  - transfer;
     updates["players/"+winner+"/cards"]    = [];
     updates["players/"+loser+"/cards"]     = [];
     updates["players/"+winner+"/hasDrawn"] = false;
